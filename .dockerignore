@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.gitignore
+.vscode
+.venv
+.wwebjs_auth
+.wwebjs_cache
+golem_memory
+*.log
+npm-debug.log*

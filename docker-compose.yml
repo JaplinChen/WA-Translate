@@ -1,0 +1,71 @@
+name: wa-translator
+
+services:
+  bot:
+    build: .
+    image: wa-translate:latest
+    container_name: wa-translator-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      CHROME_PATH: /usr/bin/chromium
+      BOT_HEALTH_ENABLED: "true"
+      BOT_HEALTH_PORT: "38866"
+      GEMINI_API_KEYS_FILE: /run/secrets/gemini_api_keys
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - ./.env:/app/.env
+      - ./.wwebjs_auth:/app/.wwebjs_auth
+      - ./.wwebjs_cache:/app/.wwebjs_cache
+    secrets:
+      - gemini_api_keys
+    command: ["node", "index.js"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:38866/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  wizard:
+    build: .
+    image: wa-translate:latest
+    container_name: wa-translator-wizard
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      CHROME_PATH: /usr/bin/chromium
+      WIZARD_HOST: 127.0.0.1
+      WIZARD_PORT: 38765
+      WIZARD_OPEN_BROWSER: "false"
+      GEMINI_API_KEYS_FILE: /run/secrets/gemini_api_keys
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "38765:38765"
+    volumes:
+      - ./.env:/app/.env
+      - ./.wwebjs_auth:/app/.wwebjs_auth
+      - ./.wwebjs_cache:/app/.wwebjs_cache
+    secrets:
+      - gemini_api_keys
+    command: ["node", "env-wizard.js"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:38765/api/env').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+secrets:
+  gemini_api_keys:
+    file: ./secrets/gemini_api_keys.txt

@@ -1,0 +1,38 @@
+{
+  "name": "wa-translate",
+  "version": "9.0.0",
+  "description": "WA Translate - WhatsApp 群組翻譯專用版",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "config:gui": "node env-wizard.js",
+    "docker:build": "docker compose build",
+    "docker:wizard": "docker compose up -d wizard",
+    "docker:bot": "docker compose up -d bot",
+    "docker:apply": "docker compose stop wizard && docker compose rm -f wizard && docker compose up -d bot",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f bot",
+    "docker:check": "powershell -ExecutionPolicy Bypass -File ./scripts/docker-health-check.ps1",
+    "docker:fix": "docker compose up -d --build wizard bot && npm run docker:check",
+    "check:max-lines": "node scripts/check-file-lines.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "wa-translate",
+    "gemini",
+    "translation",
+    "whatsapp"
+  ],
+  "author": "Arvincreator",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "dotenv": "^16.4.5",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.26.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

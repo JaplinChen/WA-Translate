@@ -1,0 +1,69 @@
+name: Docker Health Check
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  docker-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare CI env and secrets
+        shell: bash
+        run: |
+          cp .env.example .env
+          mkdir -p secrets
+          echo "ci_dummy_key" > secrets/gemini_api_keys.txt
+
+      - name: Build images
+        run: docker compose build
+
+      - name: Start services
+        run: docker compose up -d wizard bot
+
+      - name: Wait for healthy services
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout_sec=150
+          interval=5
+          elapsed=0
+
+          while [ "$elapsed" -lt "$timeout_sec" ]; do
+            bot_health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' wa-translator-bot || echo "missing")
+            wizard_health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' wa-translator-wizard || echo "missing")
+            echo "bot=$bot_health wizard=$wizard_health elapsed=${elapsed}s"
+
+            if [ "$bot_health" = "healthy" ] && [ "$wizard_health" = "healthy" ]; then
+              echo "All services are healthy."
+              exit 0
+            fi
+
+            sleep "$interval"
+            elapsed=$((elapsed + interval))
+          done
+
+          echo "Services did not become healthy in time."
+          docker compose ps
+          docker compose logs --tail=200
+          exit 1
+
+      - name: Show compose status
+        if: always()
+        run: docker compose ps
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --tail=200
+
+      - name: Shutdown
+        if: always()
+        run: docker compose down -v
