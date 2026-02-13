@@ -20,6 +20,7 @@ jobs:
         shell: bash
         run: |
           cp .env.example .env
+          sed -i 's/^WHATSAPP_TRANSLATE_GROUP_ID=.*/WHATSAPP_TRANSLATE_GROUP_ID=ci-test@g.us/' .env
           mkdir -p secrets
           echo "ci_dummy_key" > secrets/gemini_api_keys.txt
 
