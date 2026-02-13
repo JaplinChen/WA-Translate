@@ -23,8 +23,30 @@ jobs:
           mkdir -p secrets
           echo "ci_dummy_key" > secrets/gemini_api_keys.txt
 
-      - name: Build images
-        run: docker compose build
+      - name: Build images (retry)
+        shell: bash
+        run: |
+          set -euo pipefail
+          max_attempts=3
+          attempt=1
+          until [ "$attempt" -gt "$max_attempts" ]; do
+            echo "Build attempt ${attempt}/${max_attempts}"
+            if docker compose build; then
+              echo "Build succeeded."
+              exit 0
+            fi
+            if [ "$attempt" -lt "$max_attempts" ]; then
+              echo "Build failed. Retrying in 12s..."
+              sleep 12
+            fi
+            attempt=$((attempt + 1))
+          done
+
+          echo "Build failed after ${max_attempts} attempts."
+          docker version || true
+          docker compose version || true
+          docker compose config || true
+          exit 1
 
       - name: Start services
         run: docker compose up -d wizard bot
