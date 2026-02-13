@@ -85,6 +85,7 @@ function buildConfig() {
 
   const config = {
     WA_ENABLED: parseBoolean(pickEnv(envVars, 'WHATSAPP_ENABLED', 'true'), true),
+    WA_SKIP_CLIENT_INIT: parseBoolean(pickEnv(envVars, 'WA_SKIP_CLIENT_INIT', 'false'), false),
     WA_SESSION_CLIENT_ID: cleanEnv(pickEnv(envVars, 'WHATSAPP_SESSION_CLIENT_ID', 'wa-translate'), true),
     WA_TRANSLATE_GROUP_ID: cleanEnv(pickEnv(envVars, 'WHATSAPP_TRANSLATE_GROUP_ID', ''), true).replace(/^id=/i, ''),
     WA_TRANSLATE_INCLUDE_FROM_ME: parseBoolean(pickEnv(envVars, 'WHATSAPP_TRANSLATE_INCLUDE_FROM_ME', 'true'), true),
@@ -102,6 +103,9 @@ function buildConfig() {
 }
 
 function validateConfig(config) {
+  if (config.WA_SKIP_CLIENT_INIT) {
+    return { ok: true };
+  }
   if (!config.WA_ENABLED) {
     return { ok: false, error: 'WHATSAPP_ENABLED=false，程式不啟動。', exitCode: 0 };
   }
@@ -476,6 +480,10 @@ async function bootstrap() {
   }
 
   async function startWaClient() {
+    if (CONFIG.WA_SKIP_CLIENT_INIT) {
+      console.log('WA_SKIP_CLIENT_INIT=true，略過 WhatsApp 初始化（CI 模式）。');
+      return { ok: true };
+    }
     if (waClient || waStarting) return { ok: true };
     waStarting = true;
     try {
