@@ -149,6 +149,10 @@ WHATSAPP_ADMIN_ID=8869xxxxxxx@c.us
 WHATSAPP_TRANSLATE_GROUP_ID=1203xxxxxxxxxx@g.us
 WHATSAPP_TRANSLATE_INCLUDE_FROM_ME=true
 WHATSAPP_SESSION_CLIENT_ID=wa-translate
+BOT_CONTROL_TOKEN=change-this-to-a-long-random-token
+GEMINI_TIMEOUT_MS=45000
+GEMINI_MAX_RETRIES_PER_KEY=1
+TRANSLATE_QUEUE_MAX_SIZE=100
 CHROME_PATH=
 TRANSLATE_PAIRS=zh-tw:vi,vi:zh-tw,en:zh-tw
 DEFAULT_PAIR=zh-tw:vi
@@ -157,6 +161,7 @@ DEFAULT_PAIR=zh-tw:vi
 ## Docker 資料安全基線
 
 - Bot/Wizard 服務預設啟用 `no-new-privileges`、`cap_drop: ALL`
+- Bot 控制端點（`/reload`、`/wa/pause`、`/wa/resume`）會驗證 `BOT_CONTROL_TOKEN`，請務必改成高熵隨機字串
 - 機密建議放 `secrets/gemini_api_keys.txt`（已在 `.gitignore` 忽略）
 - WhatsApp session 存於 `./.wwebjs_auth`、`./.wwebjs_cache`，請定期備份並限制主機目錄權限
 - Wizard API 不再回傳 Gemini key 明文，UI 只顯示遮罩狀態

@@ -1,10 +1,15 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
+const QRCode = require('qrcode');
 
 const { ensureBrowserExecutable } = require('../../browser-helper');
 const { cleanupStaleSessionLocks } = require('../../wa-session-utils');
 
-function qrImageUrl(text) {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(text)}`;
+async function qrImageUrl(text) {
+  return QRCode.toDataURL(String(text || ''), {
+    margin: 1,
+    width: 280,
+    errorCorrectionLevel: 'M'
+  });
 }
 
 class WhatsAppManager {
@@ -121,8 +126,13 @@ class WhatsAppManager {
       }
     });
 
-    waClient.on('qr', (qr) => {
-      this.setStatus('waiting_qr', { qrDataUrl: qrImageUrl(qr), error: '' });
+    waClient.on('qr', async (qr) => {
+      try {
+        const dataUrl = await qrImageUrl(qr);
+        this.setStatus('waiting_qr', { qrDataUrl: dataUrl, error: '' });
+      } catch (err) {
+        this.setStatus('waiting_qr', { qrDataUrl: '', error: `QR 產生失敗：${err.message}` });
+      }
     });
 
     waClient.on('authenticated', () => {

@@ -1,0 +1,10 @@
+{
+  "categories": [
+    {
+      "id": "devops-docker",
+      "file": "devops-docker.md",
+      "keywords": ["docker", "wizard", "bot", "health", "token", "compose", "ecconnrefused", "enotfound"]
+    }
+  ],
+  "lastUpdated": "2026-02-19"
+}

@@ -41,7 +41,7 @@ services:
       - .env
     environment:
       CHROME_PATH: /usr/bin/chromium
-      WIZARD_HOST: 127.0.0.1
+      WIZARD_HOST: 0.0.0.0
       WIZARD_PORT: 38765
       WIZARD_OPEN_BROWSER: "false"
       GEMINI_API_KEYS_FILE: /run/secrets/gemini_api_keys
