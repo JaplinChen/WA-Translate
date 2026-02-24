@@ -18,6 +18,8 @@
 
 ## 真實畫面（Wizard UI）
 
+以下截圖來自實際運行中的 Wizard：`http://localhost:38765`（非 `file://` 靜態開檔畫面）。
+
 ### 畫面 1：快速設定總覽
 
 ![Wizard 總覽](docs/images/wizard-overview.png)
