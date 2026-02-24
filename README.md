@@ -1,8 +1,75 @@
 # WA Translate
 
-只保留 **WhatsApp 群組翻譯** 功能的精簡版。
+> 把 WhatsApp 群組直接升級成「多語聊天室」：掃碼一次、選好群組、即時翻譯自動運作。
 
-## 功能
+![Node](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-555)
+![License](https://img.shields.io/badge/License-MIT-green)
+
+專注 **WhatsApp 群組翻譯** 的實戰版本，內建 GUI 設定精靈與 Docker 一鍵部署流程，適合快速交付給團隊成員直接使用。
+
+## 為什麼用 WA Translate
+
+- **3 分鐘可上線**：`setup.bat` / `setup.sh` 引導式安裝
+- **跨語即時溝通**：支援多組語言對，群組內直接切換模式
+- **管理成本低**：GUI 一次完成掃碼、選群組、儲存與套用
+- **交付友善**：可用 Git 交接，不必手動講解複雜步驟
+
+## 真實畫面（Wizard UI）
+
+### 畫面 1：快速設定總覽
+
+![Wizard 總覽](docs/images/wizard-overview.png)
+
+### 畫面 2：進階設定（語言細節 / API key / Session）
+
+![Wizard 進階設定](docs/images/wizard-advanced.png)
+
+## 操作步驟（真實畫面）
+
+### 步驟 1：連線 WhatsApp（點「1 連線 WhatsApp」）
+
+![Step 1 - 連線 WhatsApp](docs/images/flow-step-1.png)
+
+### 步驟 2：選擇群組（點「2 選擇群組」）
+
+![Step 2 - 選擇群組](docs/images/flow-step-2.png)
+
+### 步驟 3：設定翻譯（點「3 設定翻譯」）
+
+![Step 3 - 設定翻譯](docs/images/flow-step-3.png)
+
+### 步驟 4：套用到 BOT（點「4 套用到 BOT」）
+
+![Step 4 - 套用到 BOT](docs/images/flow-step-4.png)
+
+## 畫面與流程（Visual）
+
+```mermaid
+flowchart LR
+    A[執行 setup] --> B[啟動 Wizard]
+    B --> C[手機掃碼登入 WhatsApp]
+    C --> D[選擇目標群組]
+    D --> E[設定翻譯語言對]
+    E --> F[儲存並套用]
+    F --> G[啟動 Bot 自動翻譯]
+```
+
+```mermaid
+flowchart TB
+    U[使用者訊息] --> W[WhatsApp 群組]
+    W --> B[WA Translate Bot]
+    B --> G[Gemini API]
+    G --> B
+    B --> W
+    W --> A[群組成員收到翻譯]
+    M[Wizard GUI] --> B
+    M --> E[.env / secrets]
+    E --> B
+```
+
+## 核心功能
 
 - 指定一個 WhatsApp 群組自動翻譯
 - 支援多組語言對（例如 `zh-tw:vi,vi:zh-tw,en:zh-tw`）
@@ -22,15 +89,51 @@
 1. 下載並解壓專案
 2. 雙擊 `setup.bat`
 3. 依提示輸入 Gemini API Key
-4. 瀏覽器會自動開啟設定頁，照流程完成掃碼與儲存
-5. 雙擊 `start-bot.bat` 啟動翻譯
+4. 若偵測到 `secrets/gemini_api_keys.txt` 為空，安裝器會自動要求重填並修復
+5. 瀏覽器會自動開啟設定頁（對照下方真實畫面）
+6. 在 Wizard 依序完成「連線 WhatsApp → 選擇群組 → 設定翻譯 → 儲存並套用」
+7. 雙擊 `start-bot.bat` 啟動翻譯
 
 ### macOS / Linux
 
 1. 在專案目錄執行 `chmod +x setup.sh start-bot.sh stop-bot.sh`
 2. 執行 `./setup.sh`
 3. 依提示輸入 Gemini API Key
-4. 設定完成後執行 `./start-bot.sh`
+4. 若 `secrets/gemini_api_keys.txt` 不存在或為空，安裝器會自動要求重填
+5. 在 Wizard 依序完成「連線 WhatsApp → 選擇群組 → 設定翻譯 → 儲存並套用」
+6. 設定完成後執行 `./start-bot.sh`
+
+## 用 Git 交付給其他人
+
+1. 推薦使用 private repository。
+2. 請勿提交敏感檔案：`.env`、`secrets/`、`.wwebjs_auth/`、`.wwebjs_cache/`（已在 `.gitignore`）。
+3. 交付端推送：
+
+```bash
+git add .
+git commit -m "chore: prepare handoff"
+git push origin main
+```
+
+4. 接手端安裝：
+
+```bash
+git clone <repo-url>
+cd WA-Translate
+```
+
+Windows：
+
+```bat
+setup.bat
+```
+
+macOS / Linux：
+
+```bash
+chmod +x setup.sh start-bot.sh stop-bot.sh
+./setup.sh
+```
 
 ## 快速開始（Docker）
 
