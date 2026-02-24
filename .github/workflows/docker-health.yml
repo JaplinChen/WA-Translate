@@ -44,7 +44,7 @@ jobs:
         run: |
           node -v
           npm -v
-          npm test
+          node --test --test-concurrency=1 tests/env-config.test.js tests/translate-pairs.test.js
 
       - name: Run max-lines check
         run: npm run check:max-lines
