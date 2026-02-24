@@ -19,26 +19,41 @@ function sendJson(res, statusCode, payload) {
 function collectJsonBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
+    let done = false;
+
+    const finishReject = (err) => {
+      if (done) return;
+      done = true;
+      reject(err);
+    };
+
+    const finishResolve = (payload) => {
+      if (done) return;
+      done = true;
+      resolve(payload);
+    };
 
     req.on('data', (chunk) => {
+      if (done) return;
       body += chunk;
-      if (body.length > 1024 * 1024) reject(new Error('請求內容過大'));
+      if (body.length > 1024 * 1024) finishReject(new Error('請求內容過大'));
     });
 
     req.on('end', () => {
+      if (done) return;
       if (!body) {
-        resolve({});
+        finishResolve({});
         return;
       }
 
       try {
-        resolve(JSON.parse(body));
+        finishResolve(JSON.parse(body));
       } catch (_) {
-        reject(new Error('JSON 格式錯誤'));
+        finishReject(new Error('JSON 格式錯誤'));
       }
     });
 
-    req.on('error', reject);
+    req.on('error', finishReject);
   });
 }
 

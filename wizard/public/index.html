@@ -9,41 +9,47 @@
 <body>
   <div class="wrap">
     <h1>WA 翻譯設定精靈</h1>
-    <p class="sub">只要按這三個按鈕：連線、選群組、啟用翻譯。</p>
+    <p class="sub">一步一畫面，跟著流程完成設定。</p>
 
     <section class="card quick-card">
-      <h2>三步完成</h2>
+      <h2>快速設定流程</h2>
       <div class="quick-actions">
-        <button id="quickConnect" class="quick-btn" type="button">1. 連線 WhatsApp</button>
-        <button id="quickGroups" class="quick-btn ghost" type="button">2. 選擇群組</button>
-        <button id="quickEnable" class="quick-btn" type="button">3. 啟用翻譯</button>
+        <button id="quickConnect" class="quick-btn ghost step-btn" type="button">1 連線 WhatsApp</button>
+        <button id="quickGroups" class="quick-btn ghost step-btn" type="button">2 選擇群組</button>
+        <button id="quickPairs" class="quick-btn ghost step-btn" type="button">3 設定翻譯</button>
+        <button id="quickApply" class="quick-btn ghost step-btn" type="button">4 套用到 BOT</button>
       </div>
-      <div id="quickStatus" class="status">先按「1. 連線 WhatsApp」。</div>
+      <div id="quickStatus" class="status" role="status" aria-live="polite" aria-atomic="true">先按「1. 連線 WhatsApp」。</div>
+      <div class="buttons quick-nav">
+        <button id="quickPrev" class="ghost" type="button">上一步</button>
+        <button id="quickNext" type="button">下一步：設定翻譯</button>
+      </div>
     </section>
 
     <section class="card wizard-panel active" id="section-connect">
-      <h2>1) 連線 WhatsApp</h2>
+      <h2>步驟 1：連線 WhatsApp</h2>
       <p class="note">手機請走這個路徑：WhatsApp（手機）→ 設定 → 已連結裝置 → + 連結一部裝置，然後掃描此頁 QR（不要掃「我的聯絡人 QR」）。</p>
       <div class="buttons">
         <button id="startWa" type="button">啟動 WhatsApp 連線</button>
         <button id="refreshGroups" class="ghost" type="button">刷新群組</button>
       </div>
-      <div id="waStatus" class="status">尚未啟動</div>
+      <div id="waStatus" class="status" role="status" aria-live="polite" aria-atomic="true">尚未啟動</div>
       <img id="waQr" class="qr" style="display:none;" alt="WA QR" />
       <input id="waAdmin" type="hidden" />
     </section>
 
     <section class="card wizard-panel active" id="section-group">
-      <h2>2) 選擇群組</h2>
+      <h2>步驟 2：選擇群組</h2>
       <p class="note">請從下方群組清單按「使用」，系統會自動帶入目標群組。</p>
-      <div id="selectedGroupStatus" class="status">尚未選擇群組</div>
-      <input id="groupSearch" type="text" placeholder="搜尋群組名稱或 ID" />
+      <div id="selectedGroupStatus" class="status" role="status" aria-live="polite" aria-atomic="true">尚未選擇群組</div>
+      <label for="groupSearch" class="sr-only">搜尋群組</label>
+      <input id="groupSearch" name="group_search" type="text" placeholder="搜尋群組名稱或 ID" autocomplete="off" />
       <input id="waGroup" type="hidden" />
       <div id="groupList" class="groups"></div>
     </section>
 
     <section class="card wizard-panel active" id="section-pairs">
-      <h2>3) 翻譯模式</h2>
+      <h2>步驟 3：設定翻譯</h2>
       <p class="note">一般只要選一個快速組合即可。</p>
       <div class="preset-row">
         <button id="presetZhVi" class="ghost" type="button">快速加入：中↔越</button>
@@ -58,7 +64,8 @@
         <summary>進階設定（語言細節）</summary>
         <p class="note">來源與目標語言需不同，至少一組方向。</p>
         <div class="mode-row">
-          <select id="pairSrc">
+          <label for="pairSrc" class="sr-only">來源語言</label>
+          <select id="pairSrc" name="pair_source" aria-label="來源語言">
             <option value="zh-tw">中文（繁體） (zh-tw)</option>
             <option value="vi" selected>越文 (vi)</option>
             <option value="en">英文 (en)</option>
@@ -67,7 +74,8 @@
             <option value="th">泰文 (th)</option>
           </select>
           <div class="arrow">→</div>
-          <select id="pairDst">
+          <label for="pairDst" class="sr-only">目標語言</label>
+          <select id="pairDst" name="pair_target" aria-label="目標語言">
             <option value="zh-tw" selected>中文（繁體） (zh-tw)</option>
             <option value="vi">越文 (vi)</option>
             <option value="en">英文 (en)</option>
@@ -82,7 +90,7 @@
         </div>
         <div class="row row-pad row-single">
           <label class="checkbox-label">
-            <input id="includeFromMe" type="checkbox" checked />
+            <input id="includeFromMe" name="include_from_me" type="checkbox" checked />
             翻譯自己發出的訊息
           </label>
         </div>
@@ -90,9 +98,9 @@
     </section>
 
     <section class="card wizard-panel active" id="section-apply">
-      <h2>4) 套用設定</h2>
+      <h2>步驟 4：套用到 BOT</h2>
       <p class="note">一般只要按「儲存並套用」，系統會自動套用到 BOT。</p>
-      <div id="applyConfig">
+      <form id="applyConfig" onsubmit="return false;">
         <div class="buttons">
           <button id="save" type="button">儲存並套用</button>
         </div>
@@ -100,26 +108,28 @@
           <summary>進階設定（API key / Session）</summary>
           <p class="note">若已設定過 API key，可留空沿用。</p>
           <div class="row">
-            <input id="gemini" type="password" placeholder="留空表示沿用現有 GEMINI_API_KEYS" autocomplete="off" />
+            <label for="gemini" class="sr-only">Gemini API Key</label>
+            <input id="gemini" name="gemini_api_keys" type="password" placeholder="留空表示沿用現有 GEMINI_API_KEYS" autocomplete="off" />
             <button class="ghost" id="openGemini" type="button">開啟 AI Studio</button>
           </div>
           <p id="geminiHint" class="note">為安全起見，不會顯示既有 API key 明文。</p>
           <div class="row">
-            <input id="sessionId" type="text" placeholder="WHATSAPP_SESSION_CLIENT_ID（預設 wa-translate）" />
+            <label for="sessionId" class="sr-only">WhatsApp Session Client ID</label>
+            <input id="sessionId" name="whatsapp_session_client_id" type="text" placeholder="WHATSAPP_SESSION_CLIENT_ID（預設 wa-translate）" autocomplete="off" />
           </div>
         </details>
-      </div>
-      <div id="applySummary" class="status" style="display:none;"></div>
+      </form>
+      <div id="applySummary" class="status" role="status" aria-live="polite" aria-atomic="true" style="display:none;"></div>
       <div id="applyDoneActions" class="buttons" style="display:none;">
         <button id="editAgain" class="ghost" type="button">修改設定</button>
       </div>
-      <div id="saveMsg" class="status" style="display:none;"></div>
+      <div id="saveMsg" class="status" role="status" aria-live="polite" aria-atomic="true" style="display:none;"></div>
     </section>
   </div>
 
   <script src="/pair-manager.js" defer></script>
-  <script src="/app-api-ops.js" defer></script>
-  <script src="/app-runtime.js" defer></script>
+  <script src="/app-extra.js" defer></script>
+  <script src="/app-events.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

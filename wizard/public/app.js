@@ -25,17 +25,26 @@ const els = {
   quickStatus: document.getElementById('quickStatus'),
   quickConnect: document.getElementById('quickConnect'),
   quickGroups: document.getElementById('quickGroups'),
-  quickEnable: document.getElementById('quickEnable')
+  quickPairs: document.getElementById('quickPairs'),
+  quickApply: document.getElementById('quickApply'),
+  quickPrev: document.getElementById('quickPrev'),
+  quickNext: document.getElementById('quickNext')
 };
 
-const state = {
-  detectedAdminId: '',
-  waReady: false,
-  groupLoading: false,
-  waStarting: false,
-  lastAppliedSignature: '',
-  forceEditApply: false,
-  allGroups: []
+let detectedAdminId = '';
+let waReady = false;
+let groupLoading = false;
+let waStarting = false;
+let lastAppliedSignature = '';
+let forceEditApply = false;
+let allGroups = [];
+let currentQuickStep = 1;
+let groupsLoaded = false;
+const sectionMap = {
+  1: 'section-connect',
+  2: 'section-group',
+  3: 'section-pairs',
+  4: 'section-apply'
 };
 
 const pairManager = window.PairManager.createPairManager(els);
@@ -50,6 +59,16 @@ function setStatus(message, isError = false) {
 function setQuickStatus(message, isError = false) {
   els.quickStatus.textContent = message;
   els.quickStatus.classList.toggle('error', isError);
+}
+
+async function parseJsonResponse(res) {
+  const text = await res.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    return { ok: false, error: '伺服器回傳非 JSON 格式資料。' };
+  }
 }
 
 function pairPayloadOrNull() {
@@ -76,7 +95,7 @@ function payloadSignature(payload) {
 
 function isAppliedState() {
   const currentSignature = payloadSignature(buildDraftPayload());
-  return currentSignature === state.lastAppliedSignature && Boolean(state.lastAppliedSignature);
+  return currentSignature === lastAppliedSignature && Boolean(lastAppliedSignature);
 }
 
 function updateSelectedGroupStatus() {
@@ -89,24 +108,150 @@ function updateSelectedGroupStatus() {
 }
 
 function refreshQuickActions() {
+  const step1Done = waReady && groupsLoaded;
   const hasGroup = Boolean(els.waGroup.value.trim());
   const hasPairs = Boolean(pairPayloadOrNull());
   const readyToApply = hasGroup && hasPairs;
+  const applied = isAppliedState();
 
-  els.quickConnect.disabled = state.waStarting;
-  els.quickGroups.disabled = !state.waReady || state.groupLoading;
-  els.quickEnable.disabled = !readyToApply;
+  const stepDone = {
+    1: step1Done,
+    2: hasGroup,
+    3: hasPairs,
+    4: applied
+  };
 
-  if (state.waStarting) {
-    els.quickConnect.textContent = '連線中...';
-  } else if (state.waReady) {
-    els.quickConnect.textContent = '1. WhatsApp 已連線';
-  } else {
-    els.quickConnect.textContent = '1. 連線 WhatsApp';
+  if (currentQuickStep > 1 && !stepDone[1]) currentQuickStep = 1;
+  if (currentQuickStep > 2 && !stepDone[2]) currentQuickStep = 2;
+  if (currentQuickStep > 3 && !stepDone[3]) currentQuickStep = 3;
+
+  els.quickConnect.disabled = waStarting;
+  els.quickGroups.disabled = !step1Done || groupLoading;
+  els.quickPairs.disabled = !hasGroup;
+  els.quickApply.disabled = !readyToApply;
+
+  const stepButtons = [
+    [els.quickConnect, 1],
+    [els.quickGroups, 2],
+    [els.quickPairs, 3],
+    [els.quickApply, 4]
+  ];
+  for (const [button, step] of stepButtons) {
+    button.classList.toggle('step-active', currentQuickStep === step);
+    button.classList.toggle('step-done', stepDone[step]);
   }
 
-  els.quickGroups.textContent = hasGroup ? '2. 群組已選擇' : '2. 選擇群組';
-  els.quickEnable.textContent = isAppliedState() ? '3. 已啟用完成' : '3. 啟用翻譯';
+  els.quickConnect.textContent = step1Done ? '1 已完成連線' : waStarting ? '1 連線中...' : '1 連線 WhatsApp';
+  els.quickGroups.textContent = hasGroup ? '2 群組已選擇' : '2 選擇群組';
+  els.quickPairs.textContent = hasPairs ? '3 翻譯已設定' : '3 設定翻譯';
+  els.quickApply.textContent = applied ? '4 已套用完成' : '4 套用到 BOT';
+
+  const nextLabelMap = {
+    1: '下一步：選擇群組',
+    2: '下一步：設定翻譯',
+    3: '下一步：套用到 BOT',
+    4: applied ? '已完成' : '立即套用'
+  };
+  els.quickPrev.disabled = currentQuickStep <= 1;
+  els.quickNext.disabled = (currentQuickStep === 1 && !step1Done) || (currentQuickStep === 2 && !hasGroup);
+  if (currentQuickStep === 3) els.quickNext.disabled = !readyToApply;
+  els.quickNext.textContent = nextLabelMap[currentQuickStep];
+  if (currentQuickStep === 1 && !step1Done) {
+    els.quickNext.textContent = '下一步：選擇群組（先完成連線與刷新）';
+  }
+  refreshStepOneButtons();
+  updateVisibleSection();
+}
+
+function refreshStepOneButtons() {
+  if (!startWaBtn || !refreshGroupsBtn) return;
+  startWaBtn.textContent = waReady ? 'WhatsApp 已連線' : waStarting ? '連線中...' : '啟動 WhatsApp 連線';
+  startWaBtn.disabled = waStarting;
+  startWaBtn.classList.toggle('task-done', waReady);
+
+  refreshGroupsBtn.textContent = groupLoading ? '刷新中...' : groupsLoaded ? '群組已刷新' : '刷新群組';
+  refreshGroupsBtn.disabled = !waReady || groupLoading;
+  refreshGroupsBtn.classList.toggle('task-done', groupsLoaded);
+}
+
+function updateVisibleSection() {
+  for (const [step, sectionId] of Object.entries(sectionMap)) {
+    const section = document.getElementById(sectionId);
+    if (!section) continue;
+    const visible = Number(step) === currentQuickStep;
+    section.hidden = !visible;
+    section.classList.toggle('active', visible);
+  }
+}
+
+function jumpToStep(step) {
+  currentQuickStep = step;
+
+  if (step === 1) {
+    refreshQuickActions();
+    scrollToSection('section-connect');
+    return;
+  }
+  if (step === 2) {
+    if (!(waReady && groupsLoaded)) {
+      setQuickStatus('請先完成 Step 1：連線 WhatsApp 並刷新群組。', true);
+      currentQuickStep = 1;
+      refreshQuickActions();
+      scrollToSection('section-connect');
+      return;
+    }
+    refreshQuickActions();
+    scrollToSection('section-group');
+    return;
+  }
+  if (step === 3) {
+    if (!els.waGroup.value.trim()) {
+      setQuickStatus('請先選擇群組。', true);
+      currentQuickStep = 2;
+      refreshQuickActions();
+      scrollToSection('section-group');
+      return;
+    }
+    refreshQuickActions();
+    scrollToSection('section-pairs');
+    return;
+  }
+  refreshQuickActions();
+  scrollToSection('section-apply');
+}
+
+async function executeStep(step) {
+  if (step === 1) {
+    await startWaConnection();
+    jumpToStep(1);
+    return;
+  }
+  if (step === 2) {
+    if (!(waReady && groupsLoaded)) {
+      setQuickStatus('請先完成 Step 1：連線 WhatsApp 並刷新群組。', true);
+      jumpToStep(1);
+      return;
+    }
+    await fetchGroupsAndRender();
+    jumpToStep(2);
+    return;
+  }
+  if (step === 3) {
+    jumpToStep(3);
+    return;
+  }
+  await saveConfig();
+  jumpToStep(4);
+}
+
+async function nextStep() {
+  const next = Math.min(4, currentQuickStep + 1);
+  await executeStep(next);
+}
+
+function prevStep() {
+  const prev = Math.max(1, currentQuickStep - 1);
+  jumpToStep(prev);
 }
 
 function scrollToSection(id) {
@@ -114,108 +259,14 @@ function scrollToSection(id) {
   if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function renderGroups(groups) {
-  els.groupList.innerHTML = '';
-  state.allGroups = Array.isArray(groups) ? groups : [];
 
-  const keyword = String(els.groupSearch ? els.groupSearch.value : '').trim().toLowerCase();
-  const visibleGroups = !keyword
-    ? state.allGroups
-    : state.allGroups.filter((group) => {
-      const name = String(group.name || '').toLowerCase();
-      const id = String(group.id || '').toLowerCase();
-      return name.includes(keyword) || id.includes(keyword);
-    });
-  if (state.allGroups.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'note';
-    empty.textContent = '尚無群組，請先完成 WhatsApp 登入。';
-    els.groupList.appendChild(empty);
-    return;
-  }
-
-  if (visibleGroups.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'note';
-    empty.textContent = '找不到符合條件的群組。';
-    els.groupList.appendChild(empty);
-    return;
-  }
-
-  for (const group of visibleGroups) {
-    const row = document.createElement('div');
-    row.className = 'group';
-
-    const info = document.createElement('div');
-    const name = document.createElement('div');
-    const id = document.createElement('div');
-    name.textContent = group.name;
-    id.className = 'mono';
-    id.textContent = group.id;
-    info.appendChild(name);
-    info.appendChild(id);
-
-    const button = document.createElement('button');
-    button.className = 'ghost';
-    button.type = 'button';
-    button.textContent = '使用';
-    button.addEventListener('click', () => {
-      els.waGroup.value = group.id;
-      updateSelectedGroupStatus();
-      refreshQuickActions();
-      setQuickStatus(`已選擇群組：${group.name}`);
-    });
-
-    row.appendChild(info);
-    row.appendChild(button);
-    els.groupList.appendChild(row);
-  }
-}
-
-function refreshGroupFilter() {
-  renderGroups(state.allGroups);
-}
-
-function renderApplyPanel() {
-  if (!els.applyConfig || !els.applySummary || !els.applyDoneActions) return;
-  const applied = isAppliedState();
-  const completeView = applied && !state.forceEditApply;
-  const pairPayload = pairPayloadOrNull();
-  const groupId = els.waGroup.value.trim();
-
-  if (completeView) {
-    const pairText = pairPayload ? pairPayload.translatePairs : '-';
-    els.applyConfig.style.display = 'none';
-    els.saveMsg.style.display = 'none';
-    els.applySummary.style.display = 'block';
-    els.applySummary.textContent = `設定已完成並正在執行中。目標群組：${groupId || '-'}；翻譯方向：${pairText}`;
-    els.applyDoneActions.style.display = 'flex';
-    return;
-  }
-
-  els.applyConfig.style.display = 'block';
-  els.applySummary.style.display = 'none';
-  els.applyDoneActions.style.display = 'none';
-}
-
-window.AppContext = {
-  els,
-  state,
-  pairManager,
-  refreshGroupsBtn,
-  startWaBtn,
-  setStatus,
-  setQuickStatus,
-  pairPayloadOrNull,
-  buildDraftPayload,
-  payloadSignature,
-  isAppliedState,
-  updateSelectedGroupStatus,
-  refreshQuickActions,
-  scrollToSection,
-  renderGroups,
-  refreshGroupFilter,
-  renderApplyPanel
-};
-
-window.AppRuntime.init(window.AppContext);
+loadConfig()
+  .then(() => {
+    bindEvents();
+    connectEvents();
+    bootstrapWaReadiness().catch(() => {});
+  })
+  .catch((err) => {
+    setStatus(`讀取 .env 失敗：${err.message}`, true);
+    setQuickStatus('讀取設定失敗，請重新整理。', true);
+  });

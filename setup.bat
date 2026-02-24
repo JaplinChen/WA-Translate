@@ -16,6 +16,12 @@ if %errorlevel% neq 0 (
   pause
   exit /b 1
 )
+docker info >nul 2>&1
+if %errorlevel% neq 0 (
+  echo [ERROR] Docker daemon 尚未啟動，請先開啟 Docker Desktop。
+  pause
+  exit /b 1
+)
 docker compose version >nul 2>&1
 if %errorlevel% neq 0 (
   echo [ERROR] 找不到 docker compose。請更新 Docker Desktop。
@@ -47,7 +53,13 @@ echo.
 
 echo [3/6] 準備 secrets...
 if not exist secrets mkdir secrets
-if not exist secrets\gemini_api_keys.txt (
+set "SECRET_READY=0"
+if exist secrets\gemini_api_keys.txt (
+  for %%I in (secrets\gemini_api_keys.txt) do (
+    if %%~zI gtr 0 set "SECRET_READY=1"
+  )
+)
+if "%SECRET_READY%"=="0" (
   echo [提示] 尚未建立 Gemini API key，請輸入一把 key：
   set /p GEMINI_KEY=API Key: 
   if "%GEMINI_KEY%"=="" (

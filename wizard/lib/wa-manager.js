@@ -3,6 +3,7 @@ const QRCode = require('qrcode');
 
 const { ensureBrowserExecutable } = require('../../browser-helper');
 const { cleanupStaleSessionLocks } = require('../../wa-session-utils');
+const { buildWaPuppeteerOptions } = require('../../shared/wa-puppeteer');
 
 async function qrImageUrl(text) {
   return QRCode.toDataURL(String(text || ''), {
@@ -107,23 +108,7 @@ class WhatsAppManager {
 
     const waClient = new Client({
       authStrategy: new LocalAuth({ clientId: this.sessionClientId }),
-      puppeteer: {
-        executablePath: browser.executablePath,
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--no-first-run',
-          '--no-default-browser-check',
-          '--disable-extensions',
-          '--disable-background-networking',
-          '--remote-allow-origins=*',
-          '--disable-breakpad',
-          '--disable-crash-reporter'
-        ]
-      }
+      puppeteer: buildWaPuppeteerOptions(browser.executablePath)
     });
 
     waClient.on('qr', async (qr) => {

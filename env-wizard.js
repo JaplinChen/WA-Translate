@@ -1,37 +1,145 @@
 const http = require('http');
-const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 
-const { HOST, PORT, PUBLIC_DIR, REQUIRE_TOKEN, ACCESS_TOKEN, ENV_PATH } = require('./wizard/lib/constants');
+const { HOST, PORT, PUBLIC_DIR, REQUIRE_TOKEN, ACCESS_TOKEN } = require('./wizard/lib/constants');
 const { loadConfig, saveConfig } = require('./wizard/lib/env-config');
 const { WhatsAppManager } = require('./wizard/lib/wa-manager');
 const { sendJson, collectJsonBody, serveStaticFile } = require('./wizard/lib/http-utils');
-const { createWizardAuth } = require('./wizard/lib/wizard-auth');
-const { createBotControlClient } = require('./wizard/lib/bot-control-client');
 
 const waManager = new WhatsAppManager();
 const AUTH_COOKIE_NAME = 'wa_wizard_auth';
-const botControlHost = String(process.env.BOT_CONTROL_HOST || 'bot').trim() || 'bot';
-const botControlPort = Number.parseInt(process.env.BOT_CONTROL_PORT || process.env.BOT_HEALTH_PORT || '38866', 10) || 38866;
-const inDocker = fs.existsSync('/.dockerenv');
-const botControlFallbackHosts = inDocker ? [] : ['127.0.0.1', 'localhost'];
-const runtimeAccessToken = REQUIRE_TOKEN
-  ? (ACCESS_TOKEN || crypto.randomBytes(18).toString('hex'))
-  : '';
-const auth = createWizardAuth({
-  requireToken: REQUIRE_TOKEN,
-  runtimeAccessToken,
-  authCookieName: AUTH_COOKIE_NAME,
-  sendJson
-});
-const { postBot } = createBotControlClient({
-  envPath: ENV_PATH,
-  preferredHost: botControlHost,
-  preferredPort: botControlPort,
-  fallbackHosts: botControlFallbackHosts
-});
+const runtimeAccessToken = REQUIRE_TOKEN ? (ACCESS_TOKEN || crypto.randomBytes(18).toString('hex')) : '';
+
+function parseCookies(header) {
+  const cookieHeader = String(header || '');
+  if (!cookieHeader) return {};
+  return cookieHeader
+    .split(';')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .reduce((acc, part) => {
+      const idx = part.indexOf('=');
+      if (idx <= 0) return acc;
+      const key = part.slice(0, idx).trim();
+      const value = part.slice(idx + 1).trim();
+      try {
+        acc[key] = decodeURIComponent(value);
+      } catch (_) {
+        acc[key] = value;
+      }
+      return acc;
+    }, {});
+}
+
+function getRequestToken(req, url) {
+  const fromQuery = String(url.searchParams.get('token') || '').trim();
+  if (fromQuery) return fromQuery;
+  const fromHeader = String(req.headers['x-wizard-token'] || '').trim();
+  if (fromHeader) return fromHeader;
+  const cookies = parseCookies(req.headers.cookie);
+  return String(cookies[AUTH_COOKIE_NAME] || '').trim();
+}
+
+function isLoopbackRequest(req) {
+  const remote = String(req.socket && req.socket.remoteAddress ? req.socket.remoteAddress : '');
+  return remote === '127.0.0.1' || remote === '::1' || remote === '::ffff:127.0.0.1';
+}
+
+function isLocalHostHeader(req) {
+  const hostHeader = String(req.headers.host || '').trim().toLowerCase();
+  if (!hostHeader) return false;
+  const host = hostHeader.split(':')[0];
+  return host === 'localhost' || host === '127.0.0.1';
+}
+
+function isAuthorized(req, url) {
+  if (!REQUIRE_TOKEN) return true;
+  if (isLoopbackRequest(req)) return true;
+  const token = getRequestToken(req, url);
+  return token && token === runtimeAccessToken;
+}
+
+function setAuthCookie(res) {
+  if (!REQUIRE_TOKEN) return;
+  res.setHeader('Set-Cookie', `${AUTH_COOKIE_NAME}=${encodeURIComponent(runtimeAccessToken)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=86400`);
+}
+
+function sendUnauthorized(req, res) {
+  const errorMessage = '缺少或無效的 Wizard 存取 token，請使用啟動訊息提供的網址。';
+  if (req.url && req.url.startsWith('/api/')) {
+    sendJson(res, 401, { ok: false, error: errorMessage });
+    return;
+  }
+
+  if (REQUIRE_TOKEN && (isLoopbackRequest(req) || isLocalHostHeader(req)) && runtimeAccessToken) {
+    const secureUrl = `http://localhost:${PORT}/?token=${encodeURIComponent(runtimeAccessToken)}`;
+    const html = [
+      '<!doctype html>',
+      '<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">',
+      '<title>Wizard 需要授權</title>',
+      '<style>body{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;padding:24px;line-height:1.6;color:#13353f;}',
+      '.card{max-width:760px;border:1px solid #d4dee0;border-radius:12px;padding:18px;background:#f9fcfc;}',
+      'a.btn{display:inline-block;margin-top:10px;padding:10px 14px;background:#0e7c86;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;}',
+      'code{background:#eef4f5;padding:2px 6px;border-radius:6px;word-break:break-all;}</style></head><body>',
+      '<div class="card">',
+      `<p>${errorMessage}</p>`,
+      '<p>你目前是從本機開啟，可直接使用下方安全入口：</p>',
+      `<p><a class="btn" href="${secureUrl}">使用安全入口開啟 Wizard</a></p>`,
+      `<p>或手動貼上：<br><code>${secureUrl}</code></p>`,
+      '</div></body></html>'
+    ].join('');
+    res.writeHead(401, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(html);
+    return;
+  }
+
+  res.writeHead(401, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.end(errorMessage);
+}
+
+function postJson({ host, port, path: route, timeoutMs = 5000 }) {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      {
+        host,
+        port,
+        path: route,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': '0' },
+        timeout: timeoutMs
+      },
+      (res) => {
+        let body = '';
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => {
+          body += chunk;
+        });
+        res.on('end', () => {
+          if (!body) {
+            resolve({ status: res.statusCode || 0, body: {}, raw: '' });
+            return;
+          }
+
+          try {
+            const parsed = JSON.parse(body);
+            resolve({ status: res.statusCode || 0, body: parsed, raw: body });
+          } catch (_) {
+            resolve({
+              status: res.statusCode || 0,
+              body: { ok: false, error: '回應格式錯誤（非 JSON）' },
+              raw: body
+            });
+          }
+        });
+      }
+    );
+    req.on('error', reject);
+    req.on('timeout', () => req.destroy(new Error('request timeout')));
+    req.end();
+  });
+}
 
 function openBrowser(url) {
   if (process.platform === 'win32') {
@@ -43,14 +151,29 @@ function openBrowser(url) {
   }
 }
 
+function servePublicAsset(urlPath, res) {
+  const safePath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, '');
+  const resolved = path.join(PUBLIC_DIR, safePath);
+  const publicRoot = path.resolve(PUBLIC_DIR);
+  const assetPath = path.resolve(resolved);
+  if (!assetPath.startsWith(publicRoot)) return false;
+  return serveStaticFile(res, assetPath);
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${HOST}:${PORT}`);
-  if (!auth.isAuthorized(req, url)) {
-    auth.sendUnauthorized(req, res);
+  if (req.method === 'GET' && url.pathname === '/favicon.ico') {
+    res.writeHead(204);
+    res.end();
     return;
   }
-  if (REQUIRE_TOKEN && auth.getRequestToken(req, url) === runtimeAccessToken) {
-    auth.setAuthCookie(res);
+
+  if (!isAuthorized(req, url)) {
+    sendUnauthorized(req, res);
+    return;
+  }
+  if (REQUIRE_TOKEN && getRequestToken(req, url) === runtimeAccessToken) {
+    setAuthCookie(res);
     if (req.method === 'GET' && url.pathname === '/' && url.searchParams.has('token')) {
       res.writeHead(302, { Location: '/' });
       res.end();
@@ -64,40 +187,14 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === 'GET' && url.pathname === '/styles.css') {
-    const served = serveStaticFile(res, path.join(PUBLIC_DIR, 'styles.css'));
-    if (!served) sendJson(res, 404, { ok: false, error: '找不到 CSS 檔案。' });
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/app.js') {
-    const served = serveStaticFile(res, path.join(PUBLIC_DIR, 'app.js'));
-    if (!served) sendJson(res, 404, { ok: false, error: '找不到 JS 檔案。' });
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/app-runtime.js') {
-    const served = serveStaticFile(res, path.join(PUBLIC_DIR, 'app-runtime.js'));
-    if (!served) sendJson(res, 404, { ok: false, error: '找不到 app-runtime 檔案。' });
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/app-api-ops.js') {
-    const served = serveStaticFile(res, path.join(PUBLIC_DIR, 'app-api-ops.js'));
-    if (!served) sendJson(res, 404, { ok: false, error: '找不到 app-api-ops 檔案。' });
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/pair-manager.js') {
-    const served = serveStaticFile(res, path.join(PUBLIC_DIR, 'pair-manager.js'));
-    if (!served) sendJson(res, 404, { ok: false, error: '找不到 pair-manager 檔案。' });
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/favicon.ico') {
-    res.writeHead(204);
-    res.end();
-    return;
+  if (req.method === 'GET' && !url.pathname.startsWith('/api/')) {
+    const requestPath = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+    if (requestPath) {
+      const served = servePublicAsset(requestPath, res);
+      if (served) return;
+      sendJson(res, 404, { ok: false, error: `找不到檔案：${url.pathname}` });
+      return;
+    }
   }
 
   if (req.method === 'GET' && url.pathname === '/api/env') {
@@ -124,7 +221,7 @@ const server = http.createServer(async (req, res) => {
 
       let reload = { ok: false, error: 'bot 尚未啟動，請先啟動 bot 服務。' };
       try {
-        const result = await postBot('/reload');
+        const result = await postJson({ host: 'bot', port: 38866, path: '/reload' });
         if (result.status >= 200 && result.status < 300 && result.body && result.body.ok) {
           reload = { ok: true, data: result.body };
         } else {
@@ -136,7 +233,7 @@ const server = http.createServer(async (req, res) => {
 
       let resume = { ok: false, error: 'bot 尚未恢復連線。' };
       try {
-        const resumed = await postBot('/wa/resume');
+        const resumed = await postJson({ host: 'bot', port: 38866, path: '/wa/resume' });
         if (resumed.status >= 200 && resumed.status < 300 && resumed.body && resumed.body.ok) {
           resume = { ok: true };
         } else {
@@ -156,7 +253,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/wa/start') {
     try {
       try {
-        await postBot('/wa/pause');
+        await postJson({ host: 'bot', port: 38866, path: '/wa/pause' });
       } catch (_) {
         // ignore if bot is not available
       }

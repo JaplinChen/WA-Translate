@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { parsePairKeys } = require('../../shared/translate-pairs');
 
 const { ENV_PATH } = require('./constants');
 
@@ -36,10 +37,7 @@ function readEnvValue(key, raw) {
 }
 
 function parsePairs(raw) {
-  return (raw || '')
-    .split(',')
-    .map((value) => sanitizeValue(value).toLowerCase())
-    .filter((value) => /^[a-z-]+:[a-z-]+$/i.test(value));
+  return parsePairKeys(raw, sanitizeValue);
 }
 
 function maskGeminiKeys(raw) {

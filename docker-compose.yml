@@ -43,6 +43,7 @@ services:
       CHROME_PATH: /usr/bin/chromium
       WIZARD_HOST: 0.0.0.0
       WIZARD_PORT: 38765
+      WIZARD_REQUIRE_TOKEN: "true"
       WIZARD_OPEN_BROWSER: "false"
       GEMINI_API_KEYS_FILE: /run/secrets/gemini_api_keys
     user: "1000:1000"
@@ -51,7 +52,7 @@ services:
     security_opt:
       - no-new-privileges:true
     ports:
-      - "38765:38765"
+      - "127.0.0.1:38765:38765"
     volumes:
       - ./.env:/app/.env
       - ./.wwebjs_auth:/app/.wwebjs_auth

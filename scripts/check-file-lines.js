@@ -4,7 +4,17 @@ const path = require('path');
 const ROOT = process.cwd();
 const MAX_LINES = 300;
 const INCLUDE_EXT = new Set(['.js', '.mjs', '.cjs', '.ts', '.tsx', '.html', '.css']);
-const EXCLUDE_DIR = new Set(['node_modules', 'dist', '.git', '.venv']);
+const EXCLUDE_DIR = new Set([
+  'node_modules',
+  'dist',
+  '.git',
+  '.venv',
+  '.wwebjs_auth',
+  '.wwebjs_cache',
+  'experience',
+  'secrets'
+]);
+const ALLOWLIST_OVERSIZE = new Set();
 
 function scan(dir, files = []) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -33,7 +43,7 @@ const overLimit = scan(ROOT)
     file: path.relative(ROOT, filePath),
     lines: lineCount(filePath)
   }))
-  .filter((item) => item.lines > MAX_LINES)
+  .filter((item) => item.lines > MAX_LINES && !ALLOWLIST_OVERSIZE.has(item.file.replace(/\\/g, '/')))
   .sort((a, b) => b.lines - a.lines);
 
 if (overLimit.length === 0) {
