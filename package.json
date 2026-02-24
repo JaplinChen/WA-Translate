@@ -16,8 +16,8 @@
     "docker:check": "powershell -ExecutionPolicy Bypass -File ./scripts/docker-health-check.ps1",
     "docker:fix": "docker compose up -d --build wizard bot && npm run docker:check",
     "check:max-lines": "node scripts/check-file-lines.js",
-    "test": "node --test --test-reporter=spec --test-concurrency=1 tests/*.test.js",
-    "test:watch": "node --test --watch --test-reporter=spec --test-concurrency=1 tests/*.test.js"
+    "test": "node --test --test-concurrency=1 tests/*.test.js",
+    "test:watch": "node --test --watch --test-concurrency=1 tests/*.test.js"
   },
   "keywords": [
     "wa-translate",
