@@ -11,6 +11,9 @@ jobs:
   docker-health:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: .
 
     steps:
       - name: Checkout
@@ -55,6 +58,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          [ -f .env ] || cp .env.example .env
+          mkdir -p secrets
+          [ -s secrets/gemini_api_keys.txt ] || echo "ci_dummy_key" > secrets/gemini_api_keys.txt
           max_attempts=3
           attempt=1
           until [ "$attempt" -gt "$max_attempts" ]; do
@@ -77,7 +83,13 @@ jobs:
           exit 1
 
       - name: Start services
-        run: docker compose up -d wizard bot
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -f .env ] || cp .env.example .env
+          mkdir -p secrets
+          [ -s secrets/gemini_api_keys.txt ] || echo "ci_dummy_key" > secrets/gemini_api_keys.txt
+          docker compose up -d wizard bot
 
       - name: Wait for healthy services
         shell: bash
@@ -108,12 +120,27 @@ jobs:
 
       - name: Show compose status
         if: always()
-        run: docker compose ps
+        shell: bash
+        run: |
+          [ -f .env ] || cp .env.example .env || true
+          mkdir -p secrets
+          [ -s secrets/gemini_api_keys.txt ] || echo "ci_dummy_key" > secrets/gemini_api_keys.txt
+          docker compose ps || true
 
       - name: Show logs on failure
         if: failure()
-        run: docker compose logs --tail=200
+        shell: bash
+        run: |
+          [ -f .env ] || cp .env.example .env || true
+          mkdir -p secrets
+          [ -s secrets/gemini_api_keys.txt ] || echo "ci_dummy_key" > secrets/gemini_api_keys.txt
+          docker compose logs --tail=200 || true
 
       - name: Shutdown
         if: always()
-        run: docker compose down -v
+        shell: bash
+        run: |
+          [ -f .env ] || cp .env.example .env || true
+          mkdir -p secrets
+          [ -s secrets/gemini_api_keys.txt ] || echo "ci_dummy_key" > secrets/gemini_api_keys.txt
+          docker compose down -v || true
