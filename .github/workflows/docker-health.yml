@@ -40,7 +40,7 @@ jobs:
         run: npm ci
 
       - name: Run unit tests
-        run: npm test -- --test-reporter=spec
+        run: npm test
 
       - name: Run max-lines check
         run: npm run check:max-lines
