@@ -16,6 +16,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Bootstrap compose files for CI
+        shell: bash
+        run: |
+          if [ ! -f .env ]; then
+            cp .env.example .env
+          fi
+          mkdir -p secrets
+          if [ ! -s secrets/gemini_api_keys.txt ]; then
+            echo "ci_dummy_key" > secrets/gemini_api_keys.txt
+          fi
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
