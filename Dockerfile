@@ -20,4 +20,4 @@ RUN npm ci --omit=dev
 
 COPY --chown=node:node . .
 
-CMD ["node", "index.js"]
+CMD ["node", "src/bot/index.js"]

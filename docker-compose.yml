@@ -24,7 +24,7 @@ services:
       - ./.wwebjs_cache:/app/.wwebjs_cache
     secrets:
       - gemini_api_keys
-    command: ["node", "index.js"]
+    command: ["node", "src/bot/index.js"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:38866/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -59,7 +59,7 @@ services:
       - ./.wwebjs_cache:/app/.wwebjs_cache
     secrets:
       - gemini_api_keys
-    command: ["node", "env-wizard.js"]
+    command: ["node", "src/wizard/env-wizard.js"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:38765/api/env').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s

@@ -3,14 +3,14 @@ dotenv.config();
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const qrcode = require('qrcode-terminal');
-const { ensureBrowserExecutable } = require('./browser-helper');
-const { cleanupStaleSessionLocks } = require('./wa-session-utils');
-const { buildConfig, validateConfig, normalizeLang } = require('./lib/runtime-config');
-const { createWaClient } = require('./lib/wa-client-factory');
-const { EchoGuard } = require('./lib/echo-guard');
-const { translateWithClients } = require('./lib/translator');
-const { createHealthServer } = require('./lib/health-server');
-const { createMessageProcessor } = require('./lib/message-processor');
+const { ensureBrowserExecutable } = require('../utils/browser-helper');
+const { cleanupStaleSessionLocks } = require('../utils/wa-session-utils');
+const { buildConfig, validateConfig, normalizeLang } = require('./runtime-config');
+const { createWaClient } = require('./wa-client-factory');
+const { EchoGuard } = require('./echo-guard');
+const { translateWithClients } = require('./translator');
+const { createHealthServer } = require('./health-server');
+const { createMessageProcessor } = require('./message-processor');
 
 class AppRuntime {
   constructor() {
