@@ -1,8 +1,8 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const QRCode = require('qrcode');
 
-const { ensureBrowserExecutable } = require('../../browser-helper');
-const { cleanupStaleSessionLocks } = require('../../wa-session-utils');
+const { ensureBrowserExecutable } = require('../../utils/browser-helper');
+const { cleanupStaleSessionLocks } = require('../../utils/wa-session-utils');
 const { buildWaPuppeteerOptions } = require('../../shared/wa-puppeteer');
 
 async function qrImageUrl(text) {

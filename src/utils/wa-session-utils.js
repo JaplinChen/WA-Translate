@@ -7,7 +7,7 @@ function cleanupStaleSessionLocks(clientId) {
   const safeClientId = String(clientId || '').trim();
   if (!safeClientId) return 0;
 
-  const appRoot = path.resolve(__dirname);
+  const appRoot = path.resolve(__dirname, '..', '..');
   const sessionDir = path.join(appRoot, '.wwebjs_auth', `session-${safeClientId}`);
   if (!fs.existsSync(sessionDir)) return 0;
 

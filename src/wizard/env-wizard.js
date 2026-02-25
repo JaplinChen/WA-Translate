@@ -3,10 +3,10 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 
-const { HOST, PORT, PUBLIC_DIR, REQUIRE_TOKEN, ACCESS_TOKEN } = require('./wizard/lib/constants');
-const { loadConfig, saveConfig } = require('./wizard/lib/env-config');
-const { WhatsAppManager } = require('./wizard/lib/wa-manager');
-const { sendJson, collectJsonBody, serveStaticFile } = require('./wizard/lib/http-utils');
+const { HOST, PORT, PUBLIC_DIR, REQUIRE_TOKEN, ACCESS_TOKEN } = require('./lib/constants');
+const { loadConfig, saveConfig } = require('./lib/env-config');
+const { WhatsAppManager } = require('./lib/wa-manager');
+const { sendJson, collectJsonBody, serveStaticFile } = require('./lib/http-utils');
 
 const waManager = new WhatsAppManager();
 const sseConnections = new Map();
@@ -16,7 +16,7 @@ const {
   isAuthorized,
   setAuthCookie,
   sendUnauthorized
-} = require('./wizard/lib/auth-utils');
+} = require('./lib/auth-utils');
 
 function postJson({ host, port, path: route, timeoutMs = 5000 }) {
   return new Promise((resolve, reject) => {
@@ -224,9 +224,9 @@ const server = http.createServer(async (req, res) => {
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive'
     });
-    res.write('retry: 3000
+    res.write(`retry: 3000
 
-');
+`);
     waManager.subscribe(res);
     res.write(`event: wa
 data: ${JSON.stringify(waManager.snapshot())}
