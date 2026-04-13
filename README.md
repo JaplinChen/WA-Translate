@@ -237,11 +237,27 @@ docker compose logs -f bot
 
 ## 群組指令
 
-- `/help` 顯示說明
-- `/gid` 顯示目前群組 ID
-- `/status` 顯示目前翻譯模式
-- `/mode` 列出可用模式
-- `/mode <source:target>` 切換翻譯模式（例如 `/mode zh-tw:vi`）
+| 指令 | 說明 |
+|------|------|
+| `/help` | 顯示說明 |
+| `/gid` | 顯示目前群組 ID |
+| `/status` | 顯示目前翻譯模式 |
+| `/mode` | 列出可用模式 |
+| `/mode <source:target>` | 切換翻譯模式（例如 `/mode zh-tw:vi`） |
+| `/learn <原文> → <翻譯>` | 新增術語對照，強制 AI 使用指定翻譯 |
+| `/forget <原文>` | 移除術語對照 |
+| `/glossary` | 列出目前模式的術語表 |
+
+### 術語學習（Glossary）
+
+翻譯結果不如預期時，在群組裡直接校正，Bot 會記住並永久套用：
+
+```
+/learn 公司 → công ty
+/learn 訂單 → đơn hàng
+```
+
+術語存於 `secrets/glossary.json`，依翻譯語言對分組，重啟 Bot 不會消失。
 
 ## .env 範例
 

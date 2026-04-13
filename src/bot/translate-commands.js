@@ -7,10 +7,24 @@ function buildHelpText(pairs) {
     '/status 查看目前翻譯模式',
     '/mode 列出可用模式',
     '/mode <source:target> 切換翻譯模式（例如 /mode zh-tw:vi）',
+    '/learn <原文> → <翻譯> 新增術語對照',
+    '/forget <原文> 移除術語對照',
+    '/glossary 列出目前模式的術語表',
     '',
     '可用模式：',
     pairList
   ].join('\n');
+}
+
+function parseLearnArgs(body) {
+  const inner = body.replace(/^\/learn\s*/i, '');
+  const sep = inner.indexOf('→') !== -1 ? '→' : '->';
+  const idx = inner.indexOf(sep);
+  if (idx === -1) return null;
+  const source = inner.slice(0, idx).trim();
+  const target = inner.slice(idx + sep.length).trim();
+  if (!source || !target) return null;
+  return { source, target };
 }
 
 async function handleCommand({
@@ -22,7 +36,8 @@ async function handleCommand({
   pairMap,
   currentPair,
   groupId,
-  resolveChatId
+  resolveChatId,
+  glossary
 }) {
   const raw = body.trim();
   if (!raw.startsWith('/')) return { handled: false, currentPair };
@@ -59,6 +74,46 @@ async function handleCommand({
     }
     await client.sendMessage(replyChatId, `已切換翻譯模式為 ${pair.key}`);
     return { handled: true, currentPair: pair };
+  }
+
+  if (/^\/glossary$/i.test(raw)) {
+    if (!glossary) {
+      await client.sendMessage(replyChatId, '術語表功能未啟用。');
+      return { handled: true, currentPair };
+    }
+    const entries = glossary.getEntries(currentPair.key);
+    const text = entries.length === 0
+      ? `[${currentPair.key}] 術語表目前為空。`
+      : [`[${currentPair.key}] 術語表：`, ...entries.map(([s, t]) => `- ${s} → ${t}`)].join('\n');
+    await client.sendMessage(replyChatId, text);
+    return { handled: true, currentPair };
+  }
+
+  if (/^\/learn\s+/i.test(raw)) {
+    if (!glossary) {
+      await client.sendMessage(replyChatId, '術語表功能未啟用。');
+      return { handled: true, currentPair };
+    }
+    const args = parseLearnArgs(raw);
+    if (!args) {
+      await client.sendMessage(replyChatId, '格式錯誤，請用：/learn 原文 → 翻譯');
+      return { handled: true, currentPair };
+    }
+    glossary.add(currentPair.key, args.source, args.target);
+    await client.sendMessage(replyChatId, `已學習 [${currentPair.key}]：${args.source} → ${args.target}`);
+    return { handled: true, currentPair };
+  }
+
+  if (/^\/forget\s+/i.test(raw)) {
+    if (!glossary) {
+      await client.sendMessage(replyChatId, '術語表功能未啟用。');
+      return { handled: true, currentPair };
+    }
+    const source = raw.replace(/^\/forget\s*/i, '').trim();
+    const removed = glossary.remove(currentPair.key, source);
+    const text = removed ? `已移除 [${currentPair.key}]：${source}` : `找不到術語：${source}`;
+    await client.sendMessage(replyChatId, text);
+    return { handled: true, currentPair };
   }
 
   await client.sendMessage(replyChatId, '不支援的指令，請使用 /help。');

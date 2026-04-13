@@ -7,16 +7,21 @@ async function translateWithClients({
   apiKeyIndex,
   geminiModel,
   minIntervalMs,
-  nextTranslateAt
+  nextTranslateAt,
+  glossaryEntries = []
 }) {
+  const glossarySection = glossaryEntries.length > 0
+    ? ['', '術語表（必須使用以下對照翻譯）：', ...glossaryEntries.map(([s, t]) => `- ${s} → ${t}`), ''].join('\n')
+    : '';
+
   const prompt = [
     '你是專業翻譯引擎，只做翻譯。',
     `請把以下內容從 ${pair.source} 翻譯成 ${pair.target}。`,
     '規則：',
     '1) 僅輸出翻譯結果，不要解釋。',
-    '2) 保留人名、網址、程式碼、數字與專有名詞。',
+    '2) 保留人名、網址、程式碼、數字與專有名詞（術語表另有指定者除外）。',
     '3) 若原文主要不是可翻譯自然語言，回傳原文。',
-    '',
+    glossarySection,
     text
   ].join('\n');
 

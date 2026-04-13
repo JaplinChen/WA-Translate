@@ -11,7 +11,8 @@ function createMessageProcessor({
   resolveChatId,
   echoGuard,
   botMessageMarker,
-  clientRefHolder
+  clientRefHolder,
+  glossary
 }) {
   return async function processMessage(msg) {
     try {
@@ -40,7 +41,8 @@ function createMessageProcessor({
         pairMap: getPairMap(),
         currentPair: getCurrentPair(),
         groupId: config.WA_TRANSLATE_GROUP_ID,
-        resolveChatId
+        resolveChatId,
+        glossary
       });
       if (commandResult.handled) {
         setCurrentPair(commandResult.currentPair);

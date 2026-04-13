@@ -11,6 +11,7 @@ const { EchoGuard } = require('./echo-guard');
 const { translateWithClients } = require('./translator');
 const { createHealthServer } = require('./health-server');
 const { createMessageProcessor } = require('./message-processor');
+const { Glossary } = require('./glossary');
 
 class AppRuntime {
   constructor() {
@@ -31,11 +32,12 @@ class AppRuntime {
     this.translateQueue = Promise.resolve();
     this.translateQueueDepth = 0;
     this.nextTranslateAt = 0;
-    
+
     const BOT_ECHO_TTL_MS = 120 * 1000;
     this.BOT_MESSAGE_MARKER = '\u2063\u2063';
     this.echoGuard = new EchoGuard(BOT_ECHO_TTL_MS);
     this.clientRefHolder = { current: null };
+    this.glossary = new Glossary();
   }
 
   applyConfigState(config, keepCurrentPair = true) {
@@ -93,7 +95,8 @@ class AppRuntime {
       apiKeyIndex: this.apiKeyIndex,
       geminiModel: this.config.GEMINI_MODEL,
       minIntervalMs: this.config.GEMINI_MIN_INTERVAL_MS,
-      nextTranslateAt: this.nextTranslateAt
+      nextTranslateAt: this.nextTranslateAt,
+      glossaryEntries: this.glossary.getEntries(pair.key)
     });
     this.apiKeyIndex = result.apiKeyIndex;
     this.nextTranslateAt = result.nextTranslateAt;
@@ -128,7 +131,8 @@ class AppRuntime {
       resolveChatId: this.resolveChatId.bind(this),
       echoGuard: this.echoGuard,
       botMessageMarker: this.BOT_MESSAGE_MARKER,
-      clientRefHolder: this.clientRefHolder
+      clientRefHolder: this.clientRefHolder,
+      glossary: this.glossary
     });
 
     const client = createWaClient({
