@@ -14,6 +14,12 @@ function createHealthServer({
   const server = http.createServer((req, res) => {
     const config = getConfig();
     if (req.method === 'POST' && req.url === '/reload') {
+      const token = req.headers['x-bot-control-token'];
+      if (config.BOT_CONTROL_TOKEN && token !== config.BOT_CONTROL_TOKEN) {
+        res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ ok: false, error: 'Unauthorized' }));
+        return;
+      }
       const nextConfig = buildConfig();
       const check = validateConfig(nextConfig);
       if (!check.ok) {

@@ -65,9 +65,7 @@ function resolvePuppeteerExecutable() {
 function cacheFallbackCandidates() {
   const home = os.homedir();
   if (!home) return [];
-  const base = process.platform === 'win32'
-    ? path.join(home, '.cache', 'puppeteer', 'chrome')
-    : path.join(home, '.cache', 'puppeteer', 'chrome');
+  const base = path.join(home, '.cache', 'puppeteer', 'chrome');
   if (!fs.existsSync(base)) return [];
 
   const bins = [];

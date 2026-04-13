@@ -162,6 +162,9 @@ class WhatsAppManager {
     this.client = null;
     this.started = false;
     this.ready = false;
+    this.status = 'idle';
+    this.error = '';
+    this.qrDataUrl = '';
   }
 
   closeSseClients() {

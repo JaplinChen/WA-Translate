@@ -19,14 +19,14 @@ function normalizeLang(value) {
   return cleanEnv(value, true).toLowerCase();
 }
 
-function loadApiKeys() {
-  const direct = (process.env.GEMINI_API_KEYS || '')
+function loadApiKeys(apiKeysEnv, apiKeysFileEnv) {
+  const direct = (apiKeysEnv || '')
     .split(',')
     .map((k) => cleanEnv(k))
     .filter(Boolean);
   if (direct.length > 0) return direct;
 
-  const filePath = cleanEnv(process.env.GEMINI_API_KEYS_FILE || '/run/secrets/gemini_api_keys', true);
+  const filePath = cleanEnv(apiKeysFileEnv || '/run/secrets/gemini_api_keys', true);
   if (!filePath) return [];
   try {
     const content = fs.readFileSync(filePath, 'utf8');
@@ -56,12 +56,6 @@ function pickEnv(envVars, key, fallback = '') {
 
 function buildConfig() {
   const envVars = readEnvFileVars();
-  const prevApiKeysFile = process.env.GEMINI_API_KEYS_FILE;
-  process.env.GEMINI_API_KEYS_FILE = pickEnv(
-    envVars,
-    'GEMINI_API_KEYS_FILE',
-    prevApiKeysFile || '/run/secrets/gemini_api_keys'
-  );
 
   const config = {
     WA_ENABLED: parseBoolean(pickEnv(envVars, 'WHATSAPP_ENABLED', 'true'), true),
@@ -71,9 +65,13 @@ function buildConfig() {
     WA_TRANSLATE_INCLUDE_FROM_ME: parseBoolean(pickEnv(envVars, 'WHATSAPP_TRANSLATE_INCLUDE_FROM_ME', 'true'), true),
     BOT_HEALTH_ENABLED: parseBoolean(pickEnv(envVars, 'BOT_HEALTH_ENABLED', 'true'), true),
     BOT_HEALTH_PORT: Number.parseInt(pickEnv(envVars, 'BOT_HEALTH_PORT', '38866'), 10),
+    BOT_CONTROL_TOKEN: cleanEnv(pickEnv(envVars, 'BOT_CONTROL_TOKEN', ''), true),
     GEMINI_MODEL: cleanEnv(pickEnv(envVars, 'GEMINI_MODEL', 'gemini-2.5-flash'), true),
     GEMINI_MIN_INTERVAL_MS: Number.parseInt(pickEnv(envVars, 'GEMINI_MIN_INTERVAL_MS', '12000'), 10),
-    API_KEYS: loadApiKeys(),
+    API_KEYS: loadApiKeys(
+      pickEnv(envVars, 'GEMINI_API_KEYS', ''),
+      pickEnv(envVars, 'GEMINI_API_KEYS_FILE', '/run/secrets/gemini_api_keys')
+    ),
     PAIRS: parsePairObjects(
       pickEnv(envVars, 'TRANSLATE_PAIRS', 'zh-tw:vi,vi:zh-tw'),
       (v) => cleanEnv(v, true)
@@ -81,7 +79,6 @@ function buildConfig() {
     DEFAULT_PAIR: cleanEnv(pickEnv(envVars, 'DEFAULT_PAIR', 'zh-tw:vi'), true).toLowerCase()
   };
 
-  process.env.GEMINI_API_KEYS_FILE = prevApiKeysFile;
   return config;
 }
 

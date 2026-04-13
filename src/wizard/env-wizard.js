@@ -8,6 +8,9 @@ const { loadConfig, saveConfig } = require('./lib/env-config');
 const { WhatsAppManager } = require('./lib/wa-manager');
 const { sendJson, collectJsonBody, serveStaticFile } = require('./lib/http-utils');
 
+const BOT_HOST = process.env.BOT_HOST || 'bot';
+const BOT_HEALTH_PORT = Number.parseInt(process.env.BOT_HEALTH_PORT || '38866', 10);
+
 const waManager = new WhatsAppManager();
 const sseConnections = new Map();
 const {
@@ -140,7 +143,7 @@ const server = http.createServer(async (req, res) => {
 
       let reload = { ok: false, error: 'bot 尚未啟動，請先啟動 bot 服務。' };
       try {
-        const result = await postJson({ host: 'bot', port: 38866, path: '/reload' });
+        const result = await postJson({ host: BOT_HOST, port: BOT_HEALTH_PORT, path: '/reload' });
         if (result.status >= 200 && result.status < 300 && result.body && result.body.ok) {
           reload = { ok: true, data: result.body };
         } else {
@@ -152,7 +155,7 @@ const server = http.createServer(async (req, res) => {
 
       let resume = { ok: false, error: 'bot 尚未恢復連線。' };
       try {
-        const resumed = await postJson({ host: 'bot', port: 38866, path: '/wa/resume' });
+        const resumed = await postJson({ host: BOT_HOST, port: BOT_HEALTH_PORT, path: '/wa/resume' });
         if (resumed.status >= 200 && resumed.status < 300 && resumed.body && resumed.body.ok) {
           resume = { ok: true };
         } else {
@@ -172,7 +175,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/wa/start') {
     try {
       try {
-        await postJson({ host: 'bot', port: 38866, path: '/wa/pause' });
+        await postJson({ host: BOT_HOST, port: BOT_HEALTH_PORT, path: '/wa/pause' });
       } catch (_) {
         // ignore if bot is not available
       }
