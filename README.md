@@ -220,6 +220,45 @@ docker compose logs -f bot
 - 若你改為對外綁定（`WIZARD_HOST=0.0.0.0`），請同時啟用 token（預設會自動要求）
 - 啟動日誌會顯示含 `?token=...` 的完整網址，手機請用該網址進入
 
+## 多群部署（一個帳號 / 一台機器翻多個群）
+
+單一 bot 實例只翻一個群（`WHATSAPP_TRANSLATE_GROUP_ID`）。要同時翻多個群，每群開一套獨立實例：不同 `WHATSAPP_SESSION_CLIENT_ID`（自動對應獨立 session 目錄）、不同 `BOT_HEALTH_PORT`、不同 compose project name。同一支 WhatsApp 帳號可同時在多個群，也可各群用不同帳號。
+
+1. 每群一個 env 檔（放 `groups/`）：
+
+```env
+# groups/groupA.env
+WHATSAPP_SESSION_CLIENT_ID=wa-groupA
+WHATSAPP_TRANSLATE_GROUP_ID=1203aaaa@g.us
+BOT_HEALTH_PORT=38866
+DEFAULT_PAIR=zh-tw:vi
+```
+
+```env
+# groups/groupB.env
+WHATSAPP_SESSION_CLIENT_ID=wa-groupB
+WHATSAPP_TRANSLATE_GROUP_ID=1203bbbb@g.us
+BOT_HEALTH_PORT=38867
+DEFAULT_PAIR=zh-tw:en
+```
+
+2. 用 `start-group.sh` 逐群掃碼與上線：
+
+```bash
+chmod +x start-group.sh
+./start-group.sh groupA wizard   # 首次掃碼；log 印出 http://localhost:38765/?token=...
+./start-group.sh groupA          # 上線 bot（會自動收掉該群 wizard）
+./start-group.sh groupA down     # 停掉該群
+```
+
+session 依 `WHATSAPP_SESSION_CLIENT_ID` 分存於 `.wwebjs_auth/<clientId>/`，各群互不干擾，重建容器不用重掃。
+
+注意：
+
+- **wizard 一次只開一個**：所有 wizard 都綁 `38765`，逐群掃碼即可，別同時開多群 wizard。
+- **多群模式下 wizard 只用來掃碼**：wizard 的「儲存」會寫回共用的 `.env`；群組 ID 請直接寫在各自的 `groups/<name>.env`，不要用 wizard 存。
+- 手動等效指令：`docker compose -p wa-groupA --env-file .env --env-file groups/groupA.env up -d bot`
+
 ## Docker 常用指令
 
 - 停止所有服務：`docker compose down`
