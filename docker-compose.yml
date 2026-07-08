@@ -20,8 +20,8 @@ services:
       - no-new-privileges:true
     volumes:
       - ./.env:/app/.env
-      - ./.wwebjs_auth:/app/.wwebjs_auth
-      - ./.wwebjs_cache:/app/.wwebjs_cache
+      - ./.wwebjs_auth/${WHATSAPP_SESSION_CLIENT_ID:-wa-translate}:/app/.wwebjs_auth
+      - ./.wwebjs_cache/${WHATSAPP_SESSION_CLIENT_ID:-wa-translate}:/app/.wwebjs_cache
     secrets:
       - gemini_api_keys
     command: ["node", "src/bot/index.js"]
@@ -55,8 +55,8 @@ services:
       - "127.0.0.1:38765:38765"
     volumes:
       - ./.env:/app/.env
-      - ./.wwebjs_auth:/app/.wwebjs_auth
-      - ./.wwebjs_cache:/app/.wwebjs_cache
+      - ./.wwebjs_auth/${WHATSAPP_SESSION_CLIENT_ID:-wa-translate}:/app/.wwebjs_auth
+      - ./.wwebjs_cache/${WHATSAPP_SESSION_CLIENT_ID:-wa-translate}:/app/.wwebjs_cache
     secrets:
       - gemini_api_keys
     command: ["node", "src/wizard/env-wizard.js"]
