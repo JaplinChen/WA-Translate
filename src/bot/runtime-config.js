@@ -62,6 +62,7 @@ function buildConfig() {
     WA_SKIP_CLIENT_INIT: parseBoolean(pickEnv(envVars, 'WA_SKIP_CLIENT_INIT', 'false'), false),
     WA_SESSION_CLIENT_ID: cleanEnv(pickEnv(envVars, 'WHATSAPP_SESSION_CLIENT_ID', 'wa-translate'), true),
     WA_TRANSLATE_GROUP_ID: cleanEnv(pickEnv(envVars, 'WHATSAPP_TRANSLATE_GROUP_ID', ''), true).replace(/^id=/i, ''),
+    WA_ADMIN_ID: cleanEnv(pickEnv(envVars, 'WHATSAPP_ADMIN_ID', ''), true).replace(/^id=/i, ''),
     WA_TRANSLATE_INCLUDE_FROM_ME: parseBoolean(pickEnv(envVars, 'WHATSAPP_TRANSLATE_INCLUDE_FROM_ME', 'true'), true),
     BOT_HEALTH_ENABLED: parseBoolean(pickEnv(envVars, 'BOT_HEALTH_ENABLED', 'true'), true),
     BOT_HEALTH_PORT: Number.parseInt(pickEnv(envVars, 'BOT_HEALTH_PORT', '38866'), 10),

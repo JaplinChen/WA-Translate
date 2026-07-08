@@ -40,6 +40,8 @@ golem_persona.json
 # ========================
 # PatchManager 生成的測試檔案
 *.test.js
+# 但保留正式測試目錄
+!tests/*.test.js
 
 # SystemUpgrader 下載的暫存檔
 *.new

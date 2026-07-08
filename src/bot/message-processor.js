@@ -32,11 +32,15 @@ function createMessageProcessor({
       const replyChatId = chatId || (msg.fromMe ? msg.to : msg.from);
       if (!replyChatId) return;
 
+      const sender = msg.fromMe ? config.WA_ADMIN_ID : String(msg.author || msg.from || '');
+      const isAdmin = !config.WA_ADMIN_ID || sender === config.WA_ADMIN_ID;
+
       const commandResult = await handleCommand({
         client: clientRefHolder.current,
         msg,
         body,
         replyChatId,
+        isAdmin,
         pairs: config.PAIRS,
         pairMap: getPairMap(),
         currentPair: getCurrentPair(),
