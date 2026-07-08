@@ -35,6 +35,7 @@ async function handleCommand({
   body,
   replyChatId,
   isAdmin = true,
+  botMessageMarker = '',
   pairs,
   pairMap,
   currentPair,
@@ -42,96 +43,95 @@ async function handleCommand({
   resolveChatId,
   glossary
 }) {
+  // 指令回覆需帶 marker，否則 fromMe 回聲會被機器人重新翻譯
+  const send = (text) => client.sendMessage(replyChatId, `${botMessageMarker}${text}`);
   const raw = body.trim();
   if (!raw.startsWith('/')) return { handled: false, currentPair };
 
   if (/^\/help$/i.test(raw)) {
-    await client.sendMessage(replyChatId, buildHelpText(pairs));
+    await send(buildHelpText(pairs));
     return { handled: true, currentPair };
   }
   if (/^\/gid$/i.test(raw)) {
     const chatId = await resolveChatId(msg);
-    await client.sendMessage(replyChatId, `chatId: ${chatId}`);
+    await send(`chatId: ${chatId}`);
     return { handled: true, currentPair };
   }
   if (/^\/status$/i.test(raw)) {
-    await client.sendMessage(
-      replyChatId,
-      `目前模式: ${currentPair.key}\n群組: ${groupId}\n可翻譯對數: ${pairs.length}`
-    );
+    await send(`目前模式: ${currentPair.key}\n群組: ${groupId}\n可翻譯對數: ${pairs.length}`);
     return { handled: true, currentPair };
   }
   if (/^\/mode$/i.test(raw)) {
     const text = ['可用翻譯模式：', ...pairs.map((p) => `- ${p.key}`), '', `目前模式: ${currentPair.key}`].join('\n');
-    await client.sendMessage(replyChatId, text);
+    await send(text);
     return { handled: true, currentPair };
   }
 
   const match = raw.match(/^\/mode\s+([a-zA-Z-]+:[a-zA-Z-]+)$/i);
   if (match) {
     if (!isAdmin) {
-      await client.sendMessage(replyChatId, ADMIN_ONLY);
+      await send(ADMIN_ONLY);
       return { handled: true, currentPair };
     }
     const key = match[1].toLowerCase();
     const pair = pairMap.get(key);
     if (!pair) {
-      await client.sendMessage(replyChatId, `無效模式: ${key}\n請用 /mode 查看可用清單。`);
+      await send(`無效模式: ${key}\n請用 /mode 查看可用清單。`);
       return { handled: true, currentPair };
     }
-    await client.sendMessage(replyChatId, `已切換翻譯模式為 ${pair.key}`);
+    await send(`已切換翻譯模式為 ${pair.key}`);
     return { handled: true, currentPair: pair };
   }
 
   if (/^\/glossary$/i.test(raw)) {
     if (!glossary) {
-      await client.sendMessage(replyChatId, '術語表功能未啟用。');
+      await send('術語表功能未啟用。');
       return { handled: true, currentPair };
     }
     const entries = glossary.getEntries(currentPair.key);
     const text = entries.length === 0
       ? `[${currentPair.key}] 術語表目前為空。`
       : [`[${currentPair.key}] 術語表：`, ...entries.map(([s, t]) => `- ${s} → ${t}`)].join('\n');
-    await client.sendMessage(replyChatId, text);
+    await send(text);
     return { handled: true, currentPair };
   }
 
   if (/^\/learn\s+/i.test(raw)) {
     if (!isAdmin) {
-      await client.sendMessage(replyChatId, ADMIN_ONLY);
+      await send(ADMIN_ONLY);
       return { handled: true, currentPair };
     }
     if (!glossary) {
-      await client.sendMessage(replyChatId, '術語表功能未啟用。');
+      await send('術語表功能未啟用。');
       return { handled: true, currentPair };
     }
     const args = parseLearnArgs(raw);
     if (!args) {
-      await client.sendMessage(replyChatId, '格式錯誤，請用：/learn 原文 → 翻譯');
+      await send('格式錯誤，請用：/learn 原文 → 翻譯');
       return { handled: true, currentPair };
     }
     glossary.add(currentPair.key, args.source, args.target);
-    await client.sendMessage(replyChatId, `已學習 [${currentPair.key}]：${args.source} → ${args.target}`);
+    await send(`已學習 [${currentPair.key}]：${args.source} → ${args.target}`);
     return { handled: true, currentPair };
   }
 
   if (/^\/forget\s+/i.test(raw)) {
     if (!isAdmin) {
-      await client.sendMessage(replyChatId, ADMIN_ONLY);
+      await send(ADMIN_ONLY);
       return { handled: true, currentPair };
     }
     if (!glossary) {
-      await client.sendMessage(replyChatId, '術語表功能未啟用。');
+      await send('術語表功能未啟用。');
       return { handled: true, currentPair };
     }
     const source = raw.replace(/^\/forget\s*/i, '').trim();
     const removed = glossary.remove(currentPair.key, source);
     const text = removed ? `已移除 [${currentPair.key}]：${source}` : `找不到術語：${source}`;
-    await client.sendMessage(replyChatId, text);
+    await send(text);
     return { handled: true, currentPair };
   }
 
-  await client.sendMessage(replyChatId, '不支援的指令，請使用 /help。');
+  await send('不支援的指令，請使用 /help。');
   return { handled: true, currentPair };
 }
 
