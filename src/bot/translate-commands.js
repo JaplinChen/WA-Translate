@@ -27,11 +27,14 @@ function parseLearnArgs(body) {
   return { source, target };
 }
 
+const ADMIN_ONLY = '此指令僅限管理員使用。';
+
 async function handleCommand({
   client,
   msg,
   body,
   replyChatId,
+  isAdmin = true,
   pairs,
   pairMap,
   currentPair,
@@ -66,6 +69,10 @@ async function handleCommand({
 
   const match = raw.match(/^\/mode\s+([a-zA-Z-]+:[a-zA-Z-]+)$/i);
   if (match) {
+    if (!isAdmin) {
+      await client.sendMessage(replyChatId, ADMIN_ONLY);
+      return { handled: true, currentPair };
+    }
     const key = match[1].toLowerCase();
     const pair = pairMap.get(key);
     if (!pair) {
@@ -90,6 +97,10 @@ async function handleCommand({
   }
 
   if (/^\/learn\s+/i.test(raw)) {
+    if (!isAdmin) {
+      await client.sendMessage(replyChatId, ADMIN_ONLY);
+      return { handled: true, currentPair };
+    }
     if (!glossary) {
       await client.sendMessage(replyChatId, '術語表功能未啟用。');
       return { handled: true, currentPair };
@@ -105,6 +116,10 @@ async function handleCommand({
   }
 
   if (/^\/forget\s+/i.test(raw)) {
+    if (!isAdmin) {
+      await client.sendMessage(replyChatId, ADMIN_ONLY);
+      return { handled: true, currentPair };
+    }
     if (!glossary) {
       await client.sendMessage(replyChatId, '術語表功能未啟用。');
       return { handled: true, currentPair };
