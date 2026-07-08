@@ -41,6 +41,7 @@ function createMessageProcessor({
         body,
         replyChatId,
         isAdmin,
+        botMessageMarker,
         pairs: config.PAIRS,
         pairMap: getPairMap(),
         currentPair: getCurrentPair(),

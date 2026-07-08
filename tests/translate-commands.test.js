@@ -46,3 +46,10 @@ test('唯讀指令不受限 (/status)', async () => {
   await handleCommand({ ...args, body: '/status' });
   assert.match(sent.at(-1), /目前模式/);
 });
+
+test('指令回覆帶 botMessageMarker（避免自我翻譯）', async () => {
+  const marker = '⁣⁣';
+  const { sent, args } = makeCtx({ botMessageMarker: marker });
+  await handleCommand({ ...args, body: '/status' });
+  assert.ok(sent.at(-1).startsWith(marker));
+});

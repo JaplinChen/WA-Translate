@@ -11,6 +11,8 @@ ACTION="${2:-bot}"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 GROUP_ENV="$ROOT/groups/$NAME.env"
 [ -f "$GROUP_ENV" ] || { echo "missing $GROUP_ENV"; exit 1; }
+grep -qE '^WHATSAPP_SESSION_CLIENT_ID=.+' "$GROUP_ENV" || {
+  echo "$GROUP_ENV 缺少唯一的 WHATSAPP_SESSION_CLIENT_ID（否則多群會共用同一 session）"; exit 1; }
 
 COMPOSE=(docker compose -p "wa-$NAME" --env-file "$ROOT/.env" --env-file "$GROUP_ENV")
 
