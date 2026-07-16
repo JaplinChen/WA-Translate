@@ -1,18 +1,23 @@
 const http = require('http');
 const path = require('path');
-const crypto = require('crypto');
 const { spawn } = require('child_process');
 
-const { HOST, PORT, PUBLIC_DIR, REQUIRE_TOKEN, ACCESS_TOKEN } = require('./lib/constants');
+const { HOST, PORT, PUBLIC_DIR, REQUIRE_TOKEN, ACCESS_TOKEN, ENV_PATH } = require('./lib/constants');
 const { loadConfig, saveConfig } = require('./lib/env-config');
 const { WhatsAppManager } = require('./lib/wa-manager');
 const { sendJson, collectJsonBody, serveStaticFile } = require('./lib/http-utils');
+const { createBotControlClient } = require('./lib/bot-control-client');
 
 const BOT_HOST = process.env.BOT_HOST || 'bot';
 const BOT_HEALTH_PORT = Number.parseInt(process.env.BOT_HEALTH_PORT || '38866', 10);
 
 const waManager = new WhatsAppManager();
 const sseConnections = new Map();
+const botClient = createBotControlClient({
+  envPath: ENV_PATH,
+  preferredHost: BOT_HOST,
+  preferredPort: BOT_HEALTH_PORT
+});
 const {
   runtimeAccessToken,
   getRequestToken,
@@ -20,48 +25,6 @@ const {
   setAuthCookie,
   sendUnauthorized
 } = require('./lib/auth-utils');
-
-function postJson({ host, port, path: route, timeoutMs = 5000 }) {
-  return new Promise((resolve, reject) => {
-    const req = http.request(
-      {
-        host,
-        port,
-        path: route,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Content-Length': '0' },
-        timeout: timeoutMs
-      },
-      (res) => {
-        let body = '';
-        res.setEncoding('utf8');
-        res.on('data', (chunk) => {
-          body += chunk;
-        });
-        res.on('end', () => {
-          if (!body) {
-            resolve({ status: res.statusCode || 0, body: {}, raw: '' });
-            return;
-          }
-
-          try {
-            const parsed = JSON.parse(body);
-            resolve({ status: res.statusCode || 0, body: parsed, raw: body });
-          } catch (_) {
-            resolve({
-              status: res.statusCode || 0,
-              body: { ok: false, error: '回應格式錯誤（非 JSON）' },
-              raw: body
-            });
-          }
-        });
-      }
-    );
-    req.on('error', reject);
-    req.on('timeout', () => req.destroy(new Error('request timeout')));
-    req.end();
-  });
-}
 
 function openBrowser(url) {
   if (process.platform === 'win32') {
@@ -143,7 +106,7 @@ const server = http.createServer(async (req, res) => {
 
       let reload = { ok: false, error: 'bot 尚未啟動，請先啟動 bot 服務。' };
       try {
-        const result = await postJson({ host: BOT_HOST, port: BOT_HEALTH_PORT, path: '/reload' });
+        const result = await botClient.postBot('/reload');
         if (result.status >= 200 && result.status < 300 && result.body && result.body.ok) {
           reload = { ok: true, data: result.body };
         } else {
@@ -155,7 +118,7 @@ const server = http.createServer(async (req, res) => {
 
       let resume = { ok: false, error: 'bot 尚未恢復連線。' };
       try {
-        const resumed = await postJson({ host: BOT_HOST, port: BOT_HEALTH_PORT, path: '/wa/resume' });
+        const resumed = await botClient.postBot('/wa/resume');
         if (resumed.status >= 200 && resumed.status < 300 && resumed.body && resumed.body.ok) {
           resume = { ok: true };
         } else {
@@ -175,11 +138,19 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/wa/start') {
     try {
       try {
-        await postJson({ host: BOT_HOST, port: BOT_HEALTH_PORT, path: '/wa/pause' });
+        await botClient.postBot('/wa/pause');
       } catch (_) {
         // ignore if bot is not available
       }
       const result = await waManager.start();
+      if (result && result.ok === false) {
+        sendJson(res, 200, {
+          ok: false,
+          error: result.error || '啟動失敗。',
+          status: result.status || waManager.status
+        });
+        return;
+      }
       sendJson(res, 200, {
         ok: true,
         alreadyStarted: Boolean(result && result.alreadyStarted),

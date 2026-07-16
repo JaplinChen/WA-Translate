@@ -25,19 +25,27 @@ async function translateWithClients({
     text
   ].join('\n');
 
+  const intervalMs = Math.max(0, Number.isFinite(minIntervalMs) ? minIntervalMs : 12000);
   let lastError = null;
-  let nextKeyIndex = apiKeyIndex;
   let nextAt = nextTranslateAt;
+
+  async function generate(model, idx) {
+    const now = Date.now();
+    if (nextAt > now) await sleep(nextAt - now);
+    const result = await model.generateContent(prompt);
+    nextAt = Date.now() + intervalMs;
+    return {
+      text: result.response.text().trim(),
+      apiKeyIndex: (idx + 1) % apiClients.length,
+      nextTranslateAt: nextAt
+    };
+  }
+
   for (let i = 0; i < apiClients.length; i += 1) {
     const idx = (apiKeyIndex + i) % apiClients.length;
     const model = apiClients[idx].getGenerativeModel({ model: geminiModel });
     try {
-      const now = Date.now();
-      if (nextAt > now) await sleep(nextAt - now);
-      const result = await model.generateContent(prompt);
-      nextAt = Date.now() + Math.max(0, Number.isFinite(minIntervalMs) ? minIntervalMs : 12000);
-      nextKeyIndex = (idx + 1) % apiClients.length;
-      return { text: result.response.text().trim(), apiKeyIndex: nextKeyIndex, nextTranslateAt: nextAt };
+      return await generate(model, idx);
     } catch (err) {
       if (isQuotaRateLimitError(err)) {
         const retryMs = parseRetryDelayMs(err);
@@ -45,10 +53,7 @@ async function translateWithClients({
           console.warn(`Gemini 速率限制，等待 ${Math.ceil(retryMs / 1000)} 秒後重試...`);
           await sleep(retryMs);
           try {
-            const result = await model.generateContent(prompt);
-            nextAt = Date.now() + Math.max(0, Number.isFinite(minIntervalMs) ? minIntervalMs : 12000);
-            nextKeyIndex = (idx + 1) % apiClients.length;
-            return { text: result.response.text().trim(), apiKeyIndex: nextKeyIndex, nextTranslateAt: nextAt };
+            return await generate(model, idx);
           } catch (retryErr) {
             lastError = retryErr;
             continue;

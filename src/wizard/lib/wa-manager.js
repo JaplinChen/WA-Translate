@@ -96,9 +96,10 @@ class WhatsAppManager {
     });
 
     if (!browser.ok) {
-      this.setStatus('error', { error: browser.error || '無法取得瀏覽器，請設定 CHROME_PATH。' });
+      const error = browser.error || '無法取得瀏覽器，請設定 CHROME_PATH。';
+      this.setStatus('error', { error });
       this.started = false;
-      return;
+      return { ok: false, alreadyStarted: false, status: this.status, error };
     }
 
     const removedLocks = cleanupStaleSessionLocks(this.sessionClientId);
