@@ -1,10 +1,11 @@
 const fs = require('fs');
 const { parsePairKeys } = require('../../shared/translate-pairs');
+const { cleanEnv } = require('../../shared/env-sanitize');
 
 const { ENV_PATH } = require('./constants');
 
 function sanitizeValue(value) {
-  return String(value || '').replace(/[\r\n]/g, '').trim();
+  return cleanEnv(value, true);
 }
 
 function escapeRegExp(input) {

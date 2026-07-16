@@ -1,13 +1,7 @@
 const fs = require('fs');
 const dotenv = require('dotenv');
 const { parsePairObjects } = require('../shared/translate-pairs');
-
-function cleanEnv(str, allowSpaces = false) {
-  if (!str) return '';
-  let cleaned = String(str).replace(/[^\x20-\x7E]/g, '');
-  if (!allowSpaces) cleaned = cleaned.replace(/\s/g, '');
-  return cleaned.trim();
-}
+const { cleanEnv } = require('../shared/env-sanitize');
 
 function parseBoolean(value, fallback = false) {
   const v = cleanEnv(value).toLowerCase();

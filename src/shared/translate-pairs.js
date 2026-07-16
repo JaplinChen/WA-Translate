@@ -31,7 +31,11 @@ function parsePairObjects(raw, sanitize = defaultSanitize) {
   });
 }
 
-module.exports = {
-  parsePairKeys,
-  parsePairObjects
-};
+const api = { parsePairKeys, parsePairObjects };
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = api;
+}
+if (typeof window !== 'undefined') {
+  window.TranslatePairs = api;
+}

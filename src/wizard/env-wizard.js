@@ -72,6 +72,12 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && url.pathname === '/shared/translate-pairs.js') {
+    const served = serveStaticFile(res, path.join(__dirname, '..', 'shared', 'translate-pairs.js'));
+    if (!served) sendJson(res, 404, { ok: false, error: '找不到共用模組。' });
+    return;
+  }
+
   if (req.method === 'GET' && !url.pathname.startsWith('/api/')) {
     const requestPath = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
     if (requestPath) {

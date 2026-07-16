@@ -1,13 +1,6 @@
 (function () {
   function parsePairs(raw) {
-    return (raw || '')
-      .split(',')
-      .map((value) => value.trim().toLowerCase())
-      .filter((value) => /^[a-z-]+:[a-z-]+$/i.test(value));
-  }
-
-  function uniquePairs(list) {
-    return Array.from(new Set(list));
+    return window.TranslatePairs.parsePairKeys(raw);
   }
 
   function pickLabel(selectEl, code) {
@@ -136,7 +129,7 @@
 
     return {
       load(rawPairs, rawDefault) {
-        state.pairs = uniquePairs(parsePairs(rawPairs || ''));
+        state.pairs = parsePairs(rawPairs || '');
         state.defaultPair = String(rawDefault || '').toLowerCase();
         if (!state.pairs.includes(state.defaultPair)) state.defaultPair = state.pairs[0] || '';
         renderList();
@@ -156,7 +149,7 @@
         syncAddButton();
       },
       addPreset(pairs) {
-        const incoming = uniquePairs(parsePairs((pairs || []).join(',')));
+        const incoming = parsePairs((pairs || []).join(','));
         for (const pair of incoming) {
           if (!state.pairs.includes(pair)) state.pairs.push(pair);
         }
