@@ -3,7 +3,7 @@ const QRCode = require('qrcode');
 
 const { ensureBrowserExecutable } = require('../../utils/browser-helper');
 const { cleanupStaleSessionLocks } = require('../../utils/wa-session-utils');
-const { buildWaPuppeteerOptions, WA_WEB_VERSION, WA_WEB_VERSION_CACHE } = require('../../shared/wa-puppeteer');
+const { buildWaPuppeteerOptions, waVersionOptions } = require('../../shared/wa-puppeteer');
 
 async function qrImageUrl(text) {
   return QRCode.toDataURL(String(text || ''), {
@@ -110,8 +110,7 @@ class WhatsAppManager {
     const waClient = new Client({
       authStrategy: new LocalAuth({ clientId: this.sessionClientId }),
       puppeteer: buildWaPuppeteerOptions(browser.executablePath),
-      webVersion: WA_WEB_VERSION,
-      webVersionCache: WA_WEB_VERSION_CACHE
+      ...waVersionOptions()
     });
 
     waClient.on('qr', async (qr) => {

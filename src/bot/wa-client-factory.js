@@ -1,5 +1,5 @@
 const { Client: WhatsAppClient, LocalAuth } = require('whatsapp-web.js');
-const { buildWaPuppeteerOptions, WA_WEB_VERSION, WA_WEB_VERSION_CACHE } = require('../shared/wa-puppeteer');
+const { buildWaPuppeteerOptions, waVersionOptions } = require('../shared/wa-puppeteer');
 
 function createWaClient({
   sessionClientId,
@@ -13,8 +13,7 @@ function createWaClient({
   const client = new WhatsAppClient({
     authStrategy: new LocalAuth({ clientId: sessionClientId }),
     puppeteer: buildWaPuppeteerOptions(browserExecutablePath),
-    webVersion: WA_WEB_VERSION,
-    webVersionCache: WA_WEB_VERSION_CACHE
+    ...waVersionOptions()
   });
 
   if (typeof onQr === 'function') client.on('qr', onQr);

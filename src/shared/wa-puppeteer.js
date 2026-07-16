@@ -20,18 +20,25 @@ function buildWaPuppeteerOptions(executablePath) {
   };
 }
 
-// Pin to the WhatsApp Web build whatsapp-web.js was tested against; leaving it
-// on the default (type: local) lets WA auto-update past the lib and breaks
-// getChats() with minified errors.
-const WA_WEB_VERSION = '2.3000.1039661369-alpha';
-const WA_WEB_VERSION_CACHE = {
-  type: 'remote',
-  remotePath: `https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/${WA_WEB_VERSION}.html`
-};
+// Optional WhatsApp Web version pin. Default (empty) uses the library's built-in
+// version, which matches live WhatsApp Web and completes fresh logins. Pin only
+// when a WA auto-update breaks getChats() with minified errors — set WA_WEB_VERSION
+// to a snapshot from github.com/wppconnect-team/wa-version.
+// ponytail: env knob, not hardcoded — the right version is field-tuned, not fixed.
+function waVersionOptions() {
+  const version = String(process.env.WA_WEB_VERSION || '').trim();
+  if (!version) return {};
+  return {
+    webVersion: version,
+    webVersionCache: {
+      type: 'remote',
+      remotePath: `https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/${version}.html`
+    }
+  };
+}
 
 module.exports = {
   WA_PUPPETEER_ARGS,
   buildWaPuppeteerOptions,
-  WA_WEB_VERSION,
-  WA_WEB_VERSION_CACHE
+  waVersionOptions
 };
