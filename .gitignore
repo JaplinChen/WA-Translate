@@ -67,3 +67,4 @@ Thumbs.db
 .wwebjs_auth/
 .wwebjs_cache/
 .venv/
+docker-compose.override.yml
